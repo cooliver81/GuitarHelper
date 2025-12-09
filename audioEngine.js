@@ -6,9 +6,17 @@
   const AMPLITUDE_THRESHOLD = 0.05;
   const BUFFER_SIZE = 2048;
 
+  // Basic iOS detection (Safari/Chrome on iOS will match this)
+  const IS_IOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  // Use a slightly lower threshold on iOS where input is quieter
+  const EFFECTIVE_AMPLITUDE_THRESHOLD = IS_IOS ? 0.03 : AMPLITUDE_THRESHOLD;
+
   let audioCtx = null;
   let mediaStream = null;
   let sourceNode = null;
+  let gainNode = null;
   let processorNode = null;
   let sampleRate = 44100;
   let onPitch = null;
@@ -18,8 +26,17 @@
 
     onPitch = onPitchDetected;
 
-    // Use the system default input device (which for you can be the Focusrite)
-    const constraints = { audio: true };
+    // Ask for clean, raw audio. These constraints are safely ignored
+    // on browsers that don't support them, so PC behaviour is preserved.
+    const constraints = {
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+        // no channelCount here so multi-channel interfaces still work on PC
+      }
+    };
+
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -27,10 +44,16 @@
 
     sourceNode = audioCtx.createMediaStreamSource(mediaStream);
 
-    // Ask for 2 in / 2 out so stereo interfaces stay stereo
+    // Gain node to boost quieter iOS input without affecting PC too much
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = IS_IOS ? 3.0 : 1.0;
+
+    // ScriptProcessor: keep 2 in / 2 out so stereo interfaces stay stereo on PC
     processorNode = audioCtx.createScriptProcessor(BUFFER_SIZE, 2, 2);
 
-    sourceNode.connect(processorNode);
+    // Connect graph: source -> gain -> processor -> destination
+    sourceNode.connect(gainNode);
+    gainNode.connect(processorNode);
     processorNode.connect(audioCtx.destination);
 
     processorNode.onaudioprocess = (event) => {
@@ -55,6 +78,10 @@
       processorNode.onaudioprocess = null;
       processorNode = null;
     }
+    if (gainNode) {
+      gainNode.disconnect();
+      gainNode = null;
+    }
     if (sourceNode) {
       sourceNode.disconnect();
       sourceNode = null;
@@ -73,6 +100,7 @@
     const n = buf.length;
     if (n === 0) return null;
 
+    // Remove DC offset
     let mean = 0;
     for (let i = 0; i < n; i++) mean += buf[i];
     mean /= n;
@@ -85,10 +113,14 @@
       const a = Math.abs(v);
       if (a > peak) peak = a;
     }
-    if (peak < AMPLITUDE_THRESHOLD) return null;
 
+    // Use platform-adjusted amplitude threshold
+    if (peak < EFFECTIVE_AMPLITUDE_THRESHOLD) return null;
+
+    // Normalise
     for (let i = 0; i < n; i++) x[i] /= peak;
 
+    // Autocorrelation
     const corr = new Float32Array(n);
     for (let lag = 0; lag < n; lag++) {
       let sum = 0;
