@@ -59,12 +59,18 @@
     processorNode.onaudioprocess = (event) => {
       const channels = event.inputBuffer.numberOfChannels;
 
-      // Prefer channel 1 (right = Input 2 on your Focusrite) if available
       let input;
-      if (channels >= 2) {
-        input = event.inputBuffer.getChannelData(1);
-      } else {
+
+      if (IS_IOS) {
+        // iPhone mic is mono; audio will be on channel 0
         input = event.inputBuffer.getChannelData(0);
+      } else {
+        // On desktop, prefer channel 1 (right = Input 2 on your Focusrite)
+        if (channels >= 2) {
+          input = event.inputBuffer.getChannelData(1);
+        } else {
+          input = event.inputBuffer.getChannelData(0);
+        }
       }
 
       const freq = detectPitchFromChunk(input);
