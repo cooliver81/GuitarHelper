@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fretboard Trainer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page">
+
+    <!-- Trainer 1: Single-Note Fretboard Trainer -->
+    <section class="app" id="note-trainer">
+      <header class="app-header">
+        <h1>Fretboard Trainer</h1>
+      </header>
+
+      <div class="controls">
+        <button id="startBtn" class="btn primary">▶ Start</button>
+        <button id="stopBtn" class="btn secondary" disabled>⏹ Stop</button>
+      </div>
+
+      <div class="target" id="targetText">
+        Target: <span class="string">–</span> – <span class="note">–</span>
+      </div>
+
+      <p class="status" id="statusText">
+        <span class="label">Status:</span> Mic idle.
+      </p>
+
+      <p class="stats" id="statsText">
+        Correct: 0 • Mistakes: 0
+      </p>
+
+      <div class="log" id="log"></div>
+    </section>
+
+    <!-- Trainer 2: placeholder for future drills -->
+    <section class="app app-secondary" id="scale-trainer">
+      <header class="app-header">
+        <h1>Scale / Triad Trainer</h1>
+        <p class="app-subtitle">
+          Coming soon: drills for scales and triads, one note at a time.
+        </p>
+      </header>
+
+      <div class="controls">
+        <button class="btn secondary" disabled>▶ Start</button>
+        <button class="btn secondary" disabled>⏹ Stop</button>
+      </div>
+
+      <div class="placeholder-box">
+        This section is a visual placeholder for now and doesn’t listen to
+        the microphone yet.
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts for Trainer 1 -->
+  <script src="fretboard.js"></script>
+  <script src="audioEngine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
