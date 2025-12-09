@@ -6,11 +6,11 @@
   const AMPLITUDE_THRESHOLD = 0.05;
   const BUFFER_SIZE = 2048;
 
-  // Basic iOS detection (Safari/Chrome on iOS will match this)
+  // Basic iOS detection
   const IS_IOS =
     /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-  // Use a slightly lower threshold on iOS where input is quieter
+  // Slightly lower threshold on iOS where input is quieter
   const EFFECTIVE_AMPLITUDE_THRESHOLD = IS_IOS ? 0.03 : AMPLITUDE_THRESHOLD;
 
   let audioCtx = null;
@@ -26,17 +26,8 @@
 
     onPitch = onPitchDetected;
 
-    // Ask for clean, raw audio. These constraints are safely ignored
-    // on browsers that don't support them, so PC behaviour is preserved.
-    const constraints = {
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
-        // no channelCount here so multi-channel interfaces still work on PC
-      }
-    };
-
+    // Use the simplest, most compatible constraint (this is what worked before)
+    const constraints = { audio: true };
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -44,11 +35,11 @@
 
     sourceNode = audioCtx.createMediaStreamSource(mediaStream);
 
-    // Gain node to boost quieter iOS input without affecting PC too much
+    // On iOS, boost the level a bit. On PC, gain = 1.0 (no change).
     gainNode = audioCtx.createGain();
     gainNode.gain.value = IS_IOS ? 3.0 : 1.0;
 
-    // ScriptProcessor: keep 2 in / 2 out so stereo interfaces stay stereo on PC
+    // Ask for 2 in / 2 out so stereo interfaces stay stereo (same as original)
     processorNode = audioCtx.createScriptProcessor(BUFFER_SIZE, 2, 2);
 
     // Connect graph: source -> gain -> processor -> destination
@@ -59,18 +50,12 @@
     processorNode.onaudioprocess = (event) => {
       const channels = event.inputBuffer.numberOfChannels;
 
+      // Prefer channel 1 (right = Input 2 on your Focusrite) if available
       let input;
-
-      if (IS_IOS) {
-        // iPhone mic is mono; audio will be on channel 0
-        input = event.inputBuffer.getChannelData(0);
+      if (channels >= 2) {
+        input = event.inputBuffer.getChannelData(1);
       } else {
-        // On desktop, prefer channel 1 (right = Input 2 on your Focusrite)
-        if (channels >= 2) {
-          input = event.inputBuffer.getChannelData(1);
-        } else {
-          input = event.inputBuffer.getChannelData(0);
-        }
+        input = event.inputBuffer.getChannelData(0);
       }
 
       const freq = detectPitchFromChunk(input);
@@ -106,7 +91,6 @@
     const n = buf.length;
     if (n === 0) return null;
 
-    // Remove DC offset
     let mean = 0;
     for (let i = 0; i < n; i++) mean += buf[i];
     mean /= n;
@@ -123,10 +107,8 @@
     // Use platform-adjusted amplitude threshold
     if (peak < EFFECTIVE_AMPLITUDE_THRESHOLD) return null;
 
-    // Normalise
     for (let i = 0; i < n; i++) x[i] /= peak;
 
-    // Autocorrelation
     const corr = new Float32Array(n);
     for (let lag = 0; lag < n; lag++) {
       let sum = 0;
