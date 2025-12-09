@@ -11,7 +11,7 @@
     /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   // Slightly lower threshold on iOS where input is quieter
-  const EFFECTIVE_AMPLITUDE_THRESHOLD = IS_IOS ? 0.03 : AMPLITUDE_THRESHOLD;
+  const EFFECTIVE_AMPLITUDE_THRESHOLD = IS_IOS ? 0.02 : AMPLITUDE_THRESHOLD;
 
   let audioCtx = null;
   let mediaStream = null;
@@ -32,6 +32,10 @@
 
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     sampleRate = audioCtx.sampleRate;
+    // Make sure context is running (iOS can start it as "suspended")
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
 
     sourceNode = audioCtx.createMediaStreamSource(mediaStream);
 
@@ -39,8 +43,17 @@
     gainNode = audioCtx.createGain();
     gainNode.gain.value = IS_IOS ? 3.0 : 1.0;
 
-    // Ask for 2 in / 2 out so stereo interfaces stay stereo (same as original)
-    processorNode = audioCtx.createScriptProcessor(BUFFER_SIZE, 2, 2);
+    // Input channels:
+    // - iOS: 1 in / 1 out (true mono)
+    // - Desktop: 2 in / 2 out so your Focusrite stays stereo
+    const inputChannels = IS_IOS ? 1 : 2;
+    const outputChannels = IS_IOS ? 1 : 2;
+
+    processorNode = audioCtx.createScriptProcessor(
+      BUFFER_SIZE,
+      inputChannels,
+      outputChannels
+    );
 
     // Connect graph: source -> gain -> processor -> destination
     sourceNode.connect(gainNode);
@@ -50,12 +63,18 @@
     processorNode.onaudioprocess = (event) => {
       const channels = event.inputBuffer.numberOfChannels;
 
-      // Prefer channel 1 (right = Input 2 on your Focusrite) if available
       let input;
-      if (channels >= 2) {
-        input = event.inputBuffer.getChannelData(1);
-      } else {
+
+      if (IS_IOS) {
+        // iPhone mic is mono; audio will be on channel 0
         input = event.inputBuffer.getChannelData(0);
+      } else {
+        // On desktop, prefer channel 1 (right = Input 2 on your Focusrite)
+        if (channels >= 2) {
+          input = event.inputBuffer.getChannelData(1);
+        } else {
+          input = event.inputBuffer.getChannelData(0);
+        }
       }
 
       const freq = detectPitchFromChunk(input);
