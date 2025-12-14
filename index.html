@@ -1,19 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Guitar Helper</title>
-  <link rel="icon" href="icon.png" type="image/png">
-  <link rel="apple-touch-icon" href="icon.png">  
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="page">
+  <div class="page">
 
-    <!-- Trainer 1: Single-Note Fretboard Trainer -->
-    <section class="app" id="note-trainer">
+    <!-- Single-note Fretboard Trainer -->
+    <section class="app">
       <header class="app-header">
         <h1>Fretboard Trainer</h1>
+        <p class="app-subtitle">Single-note trainer for the first 12 frets.</p>
       </header>
 
       <div class="controls">
@@ -22,45 +22,65 @@
       </div>
 
       <div class="target" id="targetText">
-        Target: <span class="string">–</span> – <span class="note">–</span>
+        Target:
+        <span class="string">-</span>
+        ·
+        <span class="note">-</span>
       </div>
 
-      <p class="status" id="statusText">
-        <span class="label">Status:</span> Mic idle.
-      </p>
+      <div class="status" id="statusText">
+        Status: Mic idle.
+      </div>
 
       <p class="stats" id="statsText">
         Correct: 0 • Mistakes: 0
       </p>
 
-      <div class="log" id="log"></div>
+      <div id="log" class="log">
+        Ready. Click “Start” to begin.
+      </div>
     </section>
 
-    <!-- Trainer 2: placeholder for future drills -->
-    <section class="app app-secondary" id="scale-trainer">
+    <!-- Triad Trainer -->
+    <section class="app app-secondary">
       <header class="app-header">
-        <h1>Scale / Triad Trainer</h1>
-        <p class="app-subtitle">
-          Coming soon: drills for scales and triads, one note at a time.
-        </p>
+        <h1>Triad Trainer</h1>
+        <p class="app-subtitle">Major triads + inversions, one note at a time.</p>
       </header>
 
       <div class="controls">
-        <button class="btn secondary" disabled>▶ Start</button>
-        <button class="btn secondary" disabled>⏹ Stop</button>
+        <button id="triadStartBtn" class="btn primary">▶ Start</button>
+        <button id="triadStopBtn" class="btn secondary" disabled>⏹ Stop</button>
       </div>
 
-      <div class="placeholder-box">
-        This section is a visual placeholder for now and doesn’t listen to
-        the microphone yet.
+      <div class="target" id="triadTargetText">
+        Target triad:
+        <span class="triad-label">–</span>
       </div>
+
+      <div class="status" id="triadStatusText">
+        Status: Mic idle.
+      </div>
+
+      <p class="stats" id="triadStatsText">
+        Correct triads: 0 • Failed triads: 0
+      </p>
+
+      <div id="triadLog" class="log">
+        Triad trainer ready. Press “Start” and play the three notes in order.
+      </div>
+
+      <p class="coming-soon">
+        Currently: major triads only. Minor / diminished / augmented coming later.
+      </p>
     </section>
 
-  </main>
+  </div>
 
-  <!-- Scripts for Trainer 1 -->
-  <script src="fretboard.js"></script>
+  <!-- Scripts -->
   <script src="audioEngine.js"></script>
+  <script src="fretboard.js"></script>
+  <script src="triads.js"></script> <!-- NEW -->
   <script src="app.js"></script>
 </body>
 </html>
