@@ -4,7 +4,6 @@
   // -------- Shared helper: audio start with fresh callback --------
   //
   async function startAudio(callback) {
-    // Always stop first so we can safely change callbacks / modes
     window.AudioEngine.stop();
     await window.AudioEngine.start(callback);
   }
@@ -12,7 +11,6 @@
   //
   // ---------- SINGLE-NOTE TRAINER ----------
   //
-
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
   const targetText = document.getElementById("targetText");
@@ -20,7 +18,7 @@
   const statsText = document.getElementById("statsText");
   const logDiv = document.getElementById("log");
 
-  let target = null; // {string, fret, midi, pitchClass, fullName}
+  let target = null;
   let lastEvent = null;
   const EVENT_DEBOUNCE_SECONDS = 0.4;
   let correctCount = 0;
@@ -50,7 +48,6 @@
     if (!targetText) return;
     const stringSpan = targetText.querySelector(".string");
     const noteSpan = targetText.querySelector(".note");
-
     if (!stringSpan || !noteSpan) return;
 
     if (!target) {
@@ -78,7 +75,7 @@
       log("Requesting microphone access…", "info");
       setStatus("Requesting mic permission…");
 
-      // Make sure triad trainer is stopped UI-wise
+      // Stop triad UI
       if (triadStartBtn) triadStartBtn.disabled = false;
       if (triadStopBtn) triadStopBtn.disabled = true;
 
@@ -96,7 +93,7 @@
     } catch (err) {
       console.error(err);
       log("Error accessing microphone: " + err.message, "bad");
-      setStatus("Mic error.\nCheck permissions and default input device.");
+      setStatus("Mic error. Check permissions and default input device.");
     }
   }
 
@@ -118,22 +115,14 @@
     const heardName = window.Fretboard.midiToNoteName(roundedMidi);
     const heardPitchClass = window.Fretboard.pitchClassName(roundedMidi);
 
-    // Debounce by pitch class so the same note doesn't spam
     const label = heardPitchClass;
     const now = performance.now() / 1000;
 
-    if (
-      lastEvent &&
-      lastEvent.label === label &&
-      now - lastEvent.time < EVENT_DEBOUNCE_SECONDS
-    ) {
-      return;
-    }
-
+    if (lastEvent && lastEvent.label === label && now - lastEvent.time < EVENT_DEBOUNCE_SECONDS) return;
     lastEvent = { label, time: now };
 
     const msg = `Heard: ${heardName} (${freq.toFixed(1)} Hz)`;
-    const correctNote = target && heardPitchClass === target.pitchClass;
+    const correctNote = heardPitchClass === target.pitchClass;
 
     if (correctNote) {
       correctCount++;
@@ -143,9 +132,7 @@
       waitingForNextTarget = true;
 
       setTimeout(() => {
-        if (startBtn && startBtn.disabled) {
-          setNewRandomTarget(false);
-        }
+        if (startBtn && startBtn.disabled) setNewRandomTarget(false);
       }, 500);
     } else {
       mistakeCount++;
@@ -154,9 +141,7 @@
       setStatus("Try again…");
       waitingForNextTarget = true;
 
-      setTimeout(() => {
-        waitingForNextTarget = false;
-      }, 500);
+      setTimeout(() => { waitingForNextTarget = false; }, 500);
     }
   }
 
@@ -170,13 +155,17 @@
   //
   // ---------- TRIAD TRAINER ----------
   //
-
   const triadStartBtn = document.getElementById("triadStartBtn");
   const triadStopBtn = document.getElementById("triadStopBtn");
   const triadTargetText = document.getElementById("triadTargetText");
   const triadStatusText = document.getElementById("triadStatusText");
   const triadStatsText = document.getElementById("triadStatsText");
   const triadLogDiv = document.getElementById("triadLog");
+  const triadLightsEl = document.getElementById("triadLights");
+
+  // NEW: quality toggles
+  const qualMajorEl = document.getElementById("qualMajor");
+  const qualMinorEl = document.getElementById("qualMinor");
 
   const TRIAD_EVENT_DEBOUNCE_SECONDS = 0.4;
   let triadLastEvent = null;
@@ -184,8 +173,8 @@
   let triadTrainer = null;
   let currentTriad = null;
   let triadSession = null;
-  let triadCorrectCount = 0; // triads answered correctly
-  let triadFailCount = 0;    // triads failed (too many wrong notes)
+  let triadCorrectCount = 0;
+  let triadFailCount = 0; // wrong note resets
   let currentString = null;
 
   function triadLog(message, level = "info") {
@@ -204,32 +193,55 @@
 
   function updateTriadStats() {
     if (!triadStatsText) return;
-    triadStatsText.textContent =
-      `Correct triads: ${triadCorrectCount} • Failed triads: ${triadFailCount}`;
+    triadStatsText.textContent = `Correct triads: ${triadCorrectCount} • Failed triads: ${triadFailCount}`;
   }
 
   function updateTriadTargetDisplay() {
     if (!triadTargetText) return;
-
     const labelSpan = triadTargetText.querySelector(".triad-label");
     if (!labelSpan) return;
 
-    if (!currentTriad || currentString == null) {
-      labelSpan.textContent = "–";
-    } else {
-      labelSpan.textContent = `${currentTriad.label()} on string ${currentString}`;
-    }
+    if (!currentTriad || currentString == null) labelSpan.textContent = "–";
+    else labelSpan.textContent = `${currentTriad.label()} on string ${currentString}`;
+  }
+
+  function getAllowedQualities() {
+    const q = [];
+
+    // If toggles missing, default major only
+    if (!qualMajorEl && !qualMinorEl) return [window.Triads.TriadQuality.MAJOR];
+
+    if (qualMajorEl?.checked) q.push(window.Triads.TriadQuality.MAJOR);
+    if (qualMinorEl?.checked) q.push(window.Triads.TriadQuality.MINOR);
+
+    // Never allow empty
+    if (q.length === 0) return [window.Triads.TriadQuality.MAJOR];
+    return q;
   }
 
   function ensureTriadTrainer() {
-    if (!triadTrainer) {
-      triadTrainer = new window.Triads.TriadTrainer({
-        // for now: all 12 roots, major only, all inversions
-      });
+    triadTrainer = new window.Triads.TriadTrainer({
+      allowedQualities: getAllowedQualities(),
+      // keep defaults for roots + inversions unless you want more controls later
+    });
+  }
+
+  function getSeq(session, res) {
+    return (res && res.expectedSequence) || session.expectedSequence || session.expected || [];
+  }
+
+  function notePrompt(seq, index0) {
+    const n = seq[index0] || "?";
+    return `Note ${index0 + 1}: ${n}`;
+  }
+
+  function renderLights(matchedCount, total = 3) {
+    if (!triadLightsEl) return;
+    if (window.Triads?.TriadsProgress?.render) {
+      window.Triads.TriadsProgress.render(triadLightsEl, matchedCount, total);
     }
   }
 
-  // Create a new triad + session
   function newTriad(manual) {
     ensureTriadTrainer();
 
@@ -238,7 +250,9 @@
     currentString = question.string;
 
     triadSession = new window.Triads.TriadSequenceSession(currentTriad, {
-      maxErrors: 1
+      resetOnWrong: true,
+      dedupeMs: 180,
+      countNonChordTonesAsError: true
     });
 
     triadLastEvent = null;
@@ -246,7 +260,10 @@
 
     const prefix = manual ? "Manual new triad" : "New triad";
     triadLog(`${prefix}: ${currentTriad.label()} on string ${currentString}`, "info");
-    setTriadStatus("Listening… Play the three notes in order.");
+
+    const seq = getSeq(triadSession, null);
+    setTriadStatus(`Listening… ${notePrompt(seq, 0)}`);
+    renderLights(0, 3);
   }
 
   async function handleTriadStart() {
@@ -254,13 +271,12 @@
       triadLog("Requesting microphone access…", "info");
       setTriadStatus("Requesting mic permission…");
 
-      // Make sure single-note trainer is “stopped” UI-wise
+      // Stop single-note UI
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
 
       await startAudio(onTriadPitchDetected);
 
-      setTriadStatus("Listening…");
       triadLog("Mic access granted.\nListening…", "info");
       if (triadStartBtn) triadStartBtn.disabled = true;
       if (triadStopBtn) triadStopBtn.disabled = false;
@@ -268,11 +284,12 @@
       triadCorrectCount = 0;
       triadFailCount = 0;
       updateTriadStats();
+
       newTriad(false);
     } catch (err) {
       console.error(err);
       triadLog("Error accessing microphone: " + err.message, "bad");
-      setTriadStatus("Mic error.\nCheck permissions and default input device.");
+      setTriadStatus("Mic error. Check permissions and default input device.");
     }
   }
 
@@ -294,57 +311,69 @@
     const heardName = window.Fretboard.midiToNoteName(roundedMidi);
     const heardPitchClass = window.Fretboard.pitchClassName(roundedMidi);
 
+    // UI debounce to avoid spam
     const label = heardPitchClass;
     const now = performance.now() / 1000;
 
-    if (
-      triadLastEvent &&
-      triadLastEvent.label === label &&
-      now - triadLastEvent.time < TRIAD_EVENT_DEBOUNCE_SECONDS
-    ) {
+    if (triadLastEvent && triadLastEvent.label === label && now - triadLastEvent.time < TRIAD_EVENT_DEBOUNCE_SECONDS) {
+      return;
+    }
+    triadLastEvent = { label, time: now };
+
+    const res = triadSession.acceptNote(heardPitchClass);
+    if (res && res.ignored) return;
+
+    const msg = `Heard: ${heardName} (${freq.toFixed(1)} Hz)`;
+
+    if (res.correct) triadLog(msg + " → ✅ Correct.", "good");
+    else triadLog(msg + " → ❌ Wrong.", "bad");
+
+    const seq = getSeq(triadSession, res);
+
+    // update dots (optional)
+    renderLights(res.matchedCount || 0, 3);
+
+    // wrong note resets attempt, SAME triad
+    if (res.reset) {
+      triadFailCount++;
+      updateTriadStats();
+      setTriadStatus(`Wrong note. Restart — ${notePrompt(seq, 0)}`);
+      renderLights(0, 3);
       return;
     }
 
-    triadLastEvent = { label, time: now };
-
-    // We pass the pitch class; TriadSequenceSession ignores octave.
-    const res = triadSession.acceptNote(heardPitchClass);
-    const msg = `Heard: ${heardName} (${freq.toFixed(1)} Hz)`;
-
-    if (res.correct) {
-      triadLog(msg + " → ✅ Correct note in sequence.", "good");
-    } else {
-      triadLog(msg + " → ❌ Not the expected note.", "bad");
-    }
-
-    if (res.status === "pending") {
-      if (res.expectedNote) {
-        setTriadStatus(`Next target note: ${res.expectedNote}`);
-      } else {
-        setTriadStatus("Listening…");
-      }
-    } else if (res.status === "success") {
+    // success => new triad
+    if (res.status === "success") {
       triadCorrectCount++;
       updateTriadStats();
-      setTriadStatus("Triad complete! New triad coming…");
+      setTriadStatus("🎉 Triad complete! New triad coming…");
+      renderLights(3, 3);
 
       setTimeout(() => {
-        if (triadStartBtn && triadStartBtn.disabled) {
-          newTriad(false);
-        }
+        if (triadStartBtn && triadStartBtn.disabled) newTriad(false);
       }, 600);
-    } else if (res.status === "fail") {
-      triadFailCount++;
-      updateTriadStats();
-      setTriadStatus("Too many wrong notes. New triad coming…");
-
-      setTimeout(() => {
-        if (triadStartBtn && triadStartBtn.disabled) {
-          newTriad(false);
-        }
-      }, 600);
+      return;
     }
+
+    // pending => show next note number
+    const matched = typeof res.matchedCount === "number" ? res.matchedCount : 0;
+    const nextIndex = Math.min(matched, 2);
+    setTriadStatus(`Listening… ${notePrompt(seq, nextIndex)}`);
   }
+
+  // Apply toggle changes live (if triad trainer running, immediately refresh triad)
+  [qualMajorEl, qualMinorEl].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("change", () => {
+      // keep at least one checked (UI safety)
+      if (qualMajorEl && qualMinorEl && !qualMajorEl.checked && !qualMinorEl.checked) {
+        qualMajorEl.checked = true;
+      }
+      if (triadStartBtn && triadStartBtn.disabled) {
+        newTriad(true);
+      }
+    });
+  });
 
   if (triadStartBtn) triadStartBtn.addEventListener("click", handleTriadStart);
   if (triadStopBtn) triadStopBtn.addEventListener("click", handleTriadStop);

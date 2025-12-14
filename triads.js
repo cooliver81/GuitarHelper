@@ -1,45 +1,62 @@
 // triads.js
 (function () {
-  // ---------- Basic pitch-class helpers ----------
-
-  const NOTE_ORDER_SHARP = [
+  // ---------- Pitch-class helpers ----------
+  const NOTE_ORDER_SHARP = Object.freeze([
     "C", "C#", "D", "D#", "E", "F",
     "F#", "G", "G#", "A", "A#", "B"
-  ];
+  ]);
 
-  const FLAT_TO_SHARP = {
+  const FLAT_TO_SHARP = Object.freeze({
     "Db": "C#",
     "Eb": "D#",
     "Gb": "F#",
     "Ab": "G#",
     "Bb": "A#"
+  });
+
+  const ENHARMONIC_TO_SHARP = Object.freeze({
+    "Cb": "B",
+    "B#": "C",
+    "E#": "F",
+    "Fb": "E"
+  });
+
+  // ---------- Progress lights helpers ----------
+  const TriadsProgress = {
+    lights(matchedCount, total = 3) {
+      const out = [];
+      for (let i = 0; i < total; i++) out.push(i < matchedCount);
+      return out;
+    },
+
+    render(containerEl, matchedCount, total = 3) {
+      if (!containerEl) return;
+      const on = this.lights(matchedCount, total);
+
+      containerEl.innerHTML = on
+        .map((lit) => `<span class="triad-light ${lit ? "on" : "off"}"></span>`)
+        .join("");
+    }
   };
 
   function normalizePitchClass(note) {
-    // Accept "C", "C4", "f#3", "Db", etc → "C", "C#", ...
-    if (!note) throw new Error("normalizePitchClass: empty note");
+    if (note == null) throw new Error("normalizePitchClass: empty note");
 
     const trimmed = String(note).trim();
-    const m = trimmed.match(/^([A-Ga-g][b#]?)(\d+)?$/);
+    const m = trimmed.match(/^([A-Ga-g])([b#]?)(-?\d+)?$/);
+    if (!m) throw new Error(`Unrecognized note format: ${note}`);
 
-    if (!m) {
-      throw new Error(`Unrecognized note format: ${note}`);
+    const letter = m[1].toUpperCase();
+    const accidental = m[2] || "";
+    let pc = letter + accidental;
+
+    if (FLAT_TO_SHARP[pc]) pc = FLAT_TO_SHARP[pc];
+    if (ENHARMONIC_TO_SHARP[pc]) pc = ENHARMONIC_TO_SHARP[pc];
+
+    if (!NOTE_ORDER_SHARP.includes(pc)) {
+      throw new Error(`Unsupported note after normalization: ${note} -> ${pc}`);
     }
-
-    let base = m[1];
-    const letter = base[0].toUpperCase();
-    const accidental = base[1] || "";
-    base = letter + accidental; // e.g. "Db", "F#", "E"
-
-    if (FLAT_TO_SHARP[base]) {
-      base = FLAT_TO_SHARP[base];
-    }
-
-    if (!NOTE_ORDER_SHARP.includes(base)) {
-      throw new Error(`Unsupported note after normalization: ${note} -> ${base}`);
-    }
-
-    return base;
+    return pc;
   }
 
   function semitoneIndex(pc) {
@@ -52,121 +69,130 @@
     return NOTE_ORDER_SHARP[(newIdx + 12) % 12];
   }
 
-  // ---------- Triad model ----------
+  // ---------- Frequency → pitch class ----------
+  function freqToMidi(freq) {
+    return Math.round(69 + 12 * Math.log2(freq / 440));
+  }
 
+  function midiToPitchClass(midi) {
+    const pc = ((midi % 12) + 12) % 12;
+    return NOTE_ORDER_SHARP[pc];
+  }
+
+  function toPitchClass(noteOrFreq) {
+    if (typeof noteOrFreq === "number") {
+      if (!isFinite(noteOrFreq) || noteOrFreq <= 0) return null;
+      return midiToPitchClass(freqToMidi(noteOrFreq));
+    }
+    return normalizePitchClass(noteOrFreq);
+  }
+
+  // ---------- Triad model ----------
   const TriadQuality = Object.freeze({
     MAJOR: "MAJOR",
-    // MINOR: "MINOR",
-    // DIMINISHED: "DIMINISHED",
-    // AUGMENTED: "AUGMENTED"
+    MINOR: "MINOR",
+    DIMINISHED: "DIMINISHED",
+    AUGMENTED: "AUGMENTED"
   });
 
-  const INTERVAL_PATTERNS = {
+  const INTERVAL_PATTERNS = Object.freeze({
     [TriadQuality.MAJOR]: [0, 4, 7],
-    // [TriadQuality.MINOR]: [0, 3, 7],
-    // [TriadQuality.DIMINISHED]: [0, 3, 6],
-    // [TriadQuality.AUGMENTED]: [0, 4, 8],
-  };
+    [TriadQuality.MINOR]: [0, 3, 7],
+    [TriadQuality.DIMINISHED]: [0, 3, 6],
+    [TriadQuality.AUGMENTED]: [0, 4, 8],
+  });
 
   const TriadInversion = Object.freeze({
-    ROOT_POSITION: 0,   // root–3rd–5th
-    FIRST_INVERSION: 1, // 3rd–5th–root
-    SECOND_INVERSION: 2 // 5th–root–3rd
+    ROOT_POSITION: 0,
+    FIRST_INVERSION: 1,
+    SECOND_INVERSION: 2
   });
 
-  const QUALITY_LABEL = {
+  const QUALITY_LABEL = Object.freeze({
     [TriadQuality.MAJOR]: "major",
-  };
+    [TriadQuality.MINOR]: "minor",
+    [TriadQuality.DIMINISHED]: "dim",
+    [TriadQuality.AUGMENTED]: "aug",
+  });
 
-  const INVERSION_LABEL = {
+  const INVERSION_LABEL = Object.freeze({
     [TriadInversion.ROOT_POSITION]: "",
     [TriadInversion.FIRST_INVERSION]: "1st inv",
     [TriadInversion.SECOND_INVERSION]: "2nd inv"
-  };
+  });
 
   class Triad {
     constructor(root, quality, inversion = TriadInversion.ROOT_POSITION) {
       this.root = normalizePitchClass(root);
       this.quality = quality;
       this.inversion = inversion;
+
+      if (!INTERVAL_PATTERNS[this.quality]) {
+        throw new Error(`Unsupported triad quality: ${quality}`);
+      }
     }
 
-    normalizedRoot() {
-      return this.root;
-    }
-
-    // Root-position chord tones: [root, 3rd, 5th]
     basicPitches() {
       const pattern = INTERVAL_PATTERNS[this.quality];
-      const r = this.normalizedRoot();
-      return pattern.map(semi => transpose(r, semi));
+      return pattern.map(semi => transpose(this.root, semi));
     }
 
-    // Ordered tones **respecting inversion**
     pitches() {
       const base = this.basicPitches();
-      const shift = this.inversion; // 0,1,2
+      const shift = this.inversion;
       return base.slice(shift).concat(base.slice(0, shift));
     }
 
     label() {
-    const qualityName = QUALITY_LABEL[this.quality]; // e.g. "major"
-    const inv = INVERSION_LABEL[this.inversion];
-
-    // Root position: "E major"
-    // 1st/2nd:      "E major (1st inv)"
-    if (!inv) {
-        return `${this.root} ${qualityName}`;
-    }
-    return `${this.root} ${qualityName} (${inv})`;
+      const qualityName = QUALITY_LABEL[this.quality] || String(this.quality).toLowerCase();
+      const inv = INVERSION_LABEL[this.inversion];
+      if (!inv) return `${this.root} ${qualityName}`;
+      return `${this.root} ${qualityName} (${inv})`;
     }
   }
 
   // ---------- Checking utilities (ORDER ONLY) ----------
+  const DEFAULT_MAX_ERRORS = 0;
+  const DEFAULT_STRICT_FAIL_FAST = true;
 
-  function normalizeSequence(notes) {
-    return notes.map(normalizePitchClass);
+  function normalizeSequence(notesOrFreqs) {
+    const out = [];
+    for (const x of notesOrFreqs) {
+      const pc = toPitchClass(x);
+      if (pc) out.push(pc);
+    }
+    return out;
   }
 
-  // Global default – tweak this to change app-wide tolerance
-  const DEFAULT_MAX_ERRORS = 3; // e.g. allow 1 random wrong note before "fail"
+  function checkTriadAnswerOrdered(expectedTriad, playedNotesOrFreqs, options = {}) {
+    const {
+      maxErrors = DEFAULT_MAX_ERRORS,
+      failFast = DEFAULT_STRICT_FAIL_FAST,
+      dedupe = true,
+    } = options;
 
-  /**
-   * Batch check: you already have an array of played notes
-   * and want to know if they contain the correct sequence
-   * in order, with at most `maxErrors` wrong notes.
-   *
-   * Example:
-   *   expected = C E G
-   *   played   = C X E G   (X ≠ C/E/G)
-   *   maxErrors = 1 → still success
-   */
-  function checkTriadAnswerOrdered(expectedTriad, playedNotes, maxErrors = DEFAULT_MAX_ERRORS) {
-    const expected = expectedTriad.pitches(); // e.g. ["C","E","G"]
-    const normPlayed = normalizeSequence(playedNotes);
+    const expected = expectedTriad.pitches();
+    const normPlayed = normalizeSequence(playedNotesOrFreqs);
 
-    let idx = 0;           // how many correct notes we've hit in order
+    let idx = 0;
     let wrongCount = 0;
+    let prev = null;
 
     for (const pc of normPlayed) {
+      if (dedupe && pc === prev) continue;
+      prev = pc;
+
       if (idx < expected.length && pc === expected[idx]) {
         idx += 1;
-        if (idx === expected.length) {
-          // We've matched all notes; we can ignore any trailing stuff
-          break;
-        }
+        if (idx === expected.length) break;
       } else {
         wrongCount += 1;
-        if (wrongCount > maxErrors) {
-          break;
-        }
+        if (failFast || wrongCount > maxErrors) break;
       }
     }
 
-    const success = idx === expected.length && wrongCount <= maxErrors;
-
     return {
-      success,
+      success: idx === expected.length && wrongCount <= maxErrors,
       matchedCount: idx,
       wrongCount,
       maxErrors,
@@ -175,140 +201,148 @@
     };
   }
 
-  /**
-   * Streaming session:
-   * Feed notes one-by-one from your audio code.
-   * It keeps track of current position and wrong notes for you.
-   */
+  // ---------- Streaming session ----------
   class TriadSequenceSession {
     constructor(triad, options = {}) {
       this.triad = triad;
-      this.expected = triad.pitches(); // ["C","E","G"] or inversion
-      this.maxErrors = options.maxErrors != null ? options.maxErrors : DEFAULT_MAX_ERRORS;
+      this.expected = triad.pitches();
+
+      this.resetOnWrong = options.resetOnWrong != null ? options.resetOnWrong : true;
+      this.dedupeMs = options.dedupeMs != null ? options.dedupeMs : 180;
+      this.countNonChordTonesAsError =
+        options.countNonChordTonesAsError != null ? options.countNonChordTonesAsError : true;
+
       this.reset();
     }
 
     reset() {
-      this.index = 0;       // 0..3
+      this.index = 0;
       this.wrongCount = 0;
       this.done = false;
       this.success = false;
+
+      this._lastPc = null;
+      this._lastPcAt = 0;
+      this._expectedSet = new Set(this.expected);
     }
 
-    /**
-     * Call this every time your pitch detector thinks it heard a note.
-     *
-     * Returns an object:
-     *  {
-     *    status: "pending" | "success" | "fail",
-     *    correct: true/false for this note,
-     *    expectedNote: (next target note),
-     *    matchedCount,
-     *    wrongCount,
-     *    maxErrors
-     *  }
-     */
-    acceptNote(note) {
+    acceptNote(noteOrFreq) {
       if (this.done) {
-        return {
-          status: this.success ? "success" : "fail",
-          correct: false,
-          expectedNote: null,
-          matchedCount: this.index,
-          wrongCount: this.wrongCount,
-          maxErrors: this.maxErrors
-        };
+        return this._payload("success", true, null, { heard: null, reset: false });
       }
 
-      const pc = normalizePitchClass(note);
+      const pc = toPitchClass(noteOrFreq);
+      if (!pc) {
+        return this._payload("pending", false, this.expected[this.index], { heard: null, reset: false });
+      }
+
+      const now = performance.now();
+
+      if (this._lastPc === pc && (now - this._lastPcAt) < this.dedupeMs) {
+        return this._payload("pending", false, this.expected[this.index], { heard: pc, ignored: true, reset: false });
+      }
+
+      this._lastPc = pc;
+      this._lastPcAt = now;
+
       const expectedNote = this.expected[this.index];
 
-      let correct = false;
-
       if (pc === expectedNote) {
-        correct = true;
         this.index += 1;
+
         if (this.index >= this.expected.length) {
           this.done = true;
           this.success = true;
+          return this._payload("success", true, null, { heard: pc, reset: false });
         }
-      } else {
-        this.wrongCount += 1;
-        if (this.wrongCount > this.maxErrors) {
-          this.done = true;
-          this.success = false;
-        }
+
+        return this._payload("pending", true, this.expected[this.index], { heard: pc, reset: false });
       }
 
-      let status = "pending";
-      if (this.done) {
-        status = this.success ? "success" : "fail";
+      const isChordTone = this._expectedSet.has(pc);
+
+      if (!this.countNonChordTonesAsError && !isChordTone) {
+        return this._payload("pending", false, expectedNote, { heard: pc, ignored: true, reset: false });
       }
+
+      this.wrongCount += 1;
+
+      if (this.resetOnWrong) {
+        this.index = 0;
+        this._lastPc = null;
+        this._lastPcAt = 0;
+        return this._payload("pending", false, this.expected[0], { heard: pc, reset: true });
+      }
+
+      return this._payload("pending", false, expectedNote, { heard: pc, reset: false });
+    }
+
+    _payload(status, correct, expectedNote, extra = {}) {
+      const lights = TriadsProgress.lights(this.index, this.expected.length);
 
       return {
         status,
         correct,
-        expectedNote: this.done ? null : this.expected[this.index],
+        reset: !!extra.reset,            // ✅ always correct
+        expectedNote,
         matchedCount: this.index,
         wrongCount: this.wrongCount,
-        maxErrors: this.maxErrors
+        expectedSequence: this.expected.slice(),
+        lights,
+        ...extra
       };
     }
   }
 
-  // ---------- Trainer / question generation ----------
-
-    class TriadTrainer {
+  // ---------- Trainer ----------
+  class TriadTrainer {
     constructor(options = {}) {
-        const {
+      const {
         allowedRoots = NOTE_ORDER_SHARP.slice(),
         allowedQualities = [TriadQuality.MAJOR],
         allowedInversions = [
-            TriadInversion.ROOT_POSITION,
-            TriadInversion.FIRST_INVERSION,
-            TriadInversion.SECOND_INVERSION
+          TriadInversion.ROOT_POSITION,
+          TriadInversion.FIRST_INVERSION,
+          TriadInversion.SECOND_INVERSION
         ]
-        } = options;
+      } = options;
 
-        this.allowedRoots = allowedRoots.map(normalizePitchClass);
-        this.allowedQualities = allowedQualities.slice();
-        this.allowedInversions = allowedInversions.slice();
+      this.allowedRoots = allowedRoots.map(normalizePitchClass);
+      this.allowedQualities = allowedQualities.slice();
+      this.allowedInversions = allowedInversions.slice();
     }
 
     randomTriad() {
-        const root = randomChoice(this.allowedRoots);
-        const quality = randomChoice(this.allowedQualities);
-        const inversion = randomChoice(this.allowedInversions);
-        return new Triad(root, quality, inversion);
+      const root = randomChoice(this.allowedRoots);
+      const quality = randomChoice(this.allowedQualities);
+      const inversion = randomChoice(this.allowedInversions);
+      return new Triad(root, quality, inversion);
     }
 
-    // ⬇⬇⬇ REPLACE THIS FUNCTION WITH THIS VERSION ⬇⬇⬇
     nextQuestion() {
-        const triad = this.randomTriad();
-
-        // Only allow strings 6, 5, 4
-        const possibleStrings = [6, 5, 4];
-        const string = randomChoice(possibleStrings);
-
-        return { triad, string };
+      const triad = this.randomTriad();
+      const possibleStrings = [6, 5, 4];
+      const string = randomChoice(possibleStrings);
+      return { triad, string };
     }
-    }
+  }
 
   function randomChoice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
   // ---------- Public API ----------
-
   window.Triads = {
     NOTE_ORDER_SHARP,
     normalizePitchClass,
+    toPitchClass,
     TriadQuality,
     TriadInversion,
     Triad,
     TriadTrainer,
     DEFAULT_MAX_ERRORS,
     checkTriadAnswerOrdered,
-    TriadSequenceSession
+    TriadSequenceSession,
+    TriadsProgress
   };
 })();
