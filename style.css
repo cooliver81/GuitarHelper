@@ -1,18 +1,32 @@
 :root {
   color-scheme: dark;
-  --bg: #050712;
+
+  --bg-1: #111827;
+  --bg-2: #020617;
+
   --card-bg: #111320;
   --card-border: #26283a;
   --card-radius: 18px;
+
   --accent: #2563eb;
-  --accent-soft: #1d4ed8;
+  --accent-hover: #1d4ed8;
+
   --accent-string: #38bdf8;
   --accent-note: #facc6b;
+
   --text-main: #f9fafb;
   --text-muted: #a1a1c2;
   --text-soft: #d4d4f7;
+
   --good: #22c55e;
+  --warn: #eab308;
   --bad: #ef4444;
+
+  --surface-1: #151629;
+  --surface-2: #1f2434;
+  --surface-2-hover: #262c40;
+
+  --outline: #3b3b4f;
 }
 
 *,
@@ -24,30 +38,31 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #111827 0, #020617 50%, #000 100%);
   color: var(--text-main);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
   display: flex;
   justify-content: center;
   align-items: flex-start;
+
+  background: radial-gradient(circle at top, var(--bg-1) 0, var(--bg-2) 50%, #000 100%);
 }
 
 .page {
   width: 100%;
   max-width: 780px;
   padding: 32px 16px 40px;
+
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
 /* Card / app container */
-
 .app {
   background: var(--card-bg);
-  border-radius: var(--card-radius);
   border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   padding: 20px 20px 22px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
 }
@@ -57,7 +72,6 @@ body {
 }
 
 /* Header */
-
 .app-header h1 {
   margin: 0 0 4px;
   font-size: 1.4rem;
@@ -71,7 +85,6 @@ body {
 }
 
 /* Controls */
-
 .controls {
   margin: 16px 0 18px;
   display: flex;
@@ -83,48 +96,56 @@ body {
   padding: 8px 18px;
   border-radius: 999px;
   border: none;
+
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  transition: transform 0.08s ease, box-shadow 0.08s ease,
-    background-color 0.1s ease, opacity 0.1s ease;
-}
 
-.btn.primary {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3),
-    0 8px 20px rgba(37, 99, 235, 0.6);
-}
-
-.btn.primary:hover:not(:disabled) {
-  background: var(--accent-soft);
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.6),
-    0 10px 24px rgba(37, 99, 235, 0.8);
-}
-
-.btn.secondary {
-  background: #1f2434;
-  color: var(--text-soft);
-}
-
-.btn.secondary:hover:not(:disabled) {
-  background: #262c40;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    background-color 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .btn:disabled {
   opacity: 0.45;
   cursor: default;
   box-shadow: none;
+  transform: none;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.30),
+    0 8px 20px rgba(37, 99, 235, 0.60);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.55),
+    0 10px 24px rgba(37, 99, 235, 0.80);
+}
+
+.btn.secondary {
+  background: var(--surface-2);
+  color: var(--text-soft);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: var(--surface-2-hover);
 }
 
 /* Target + status */
-
 .target {
   margin-top: 2px;
   font-size: 1.2rem;
@@ -132,12 +153,12 @@ body {
 
 .target .string {
   color: var(--accent-string);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .target .note {
   color: var(--accent-note);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .status {
@@ -147,87 +168,72 @@ body {
   color: var(--text-muted);
 }
 
-.status .label {
-  color: var(--accent-string);
-  font-weight: 500;
-}
-
 .stats {
   margin: 0 0 10px;
   font-size: 0.9rem;
   color: var(--text-soft);
 }
 
-/* Log: single-line feedback box */
-
+/* Log box */
 .log {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #151629;
-  font-family: ui-monospace, Menlo, Monaco, "SF Mono", Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  background: var(--surface-1);
+
+  font-family: ui-monospace, Menlo, Monaco, "SF Mono", Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.85rem;
   color: var(--text-soft);
   min-height: 1.25em;
+
+  border: 1px solid transparent;
 }
 
-.log-good {
-  border: 1px solid var(--good);
-  color: #bbf7d0;
-}
+.log-good { border-color: var(--good); color: #bbf7d0; }
+.log-warn { border-color: var(--warn); color: var(--accent-note); }
+.log-bad  { border-color: var(--bad);  color: #fecaca; }
 
-.log-warn {
-  border: 1px solid #eab308;
-  color: #facc6b;
-}
-
-.log-bad {
-  border: 1px solid var(--bad);
-  color: #fecaca;
-}
-
-/* Audio settings card */
-
-.app-settings .controls {
-  margin-top: 14px;
-}
-
+/* Settings row (used by Major/Minor toggles) */
 .settings-row {
-  margin-top: 14px;
+  margin-top: 6px;
+  margin-bottom: 14px;
+
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 14px;
+  align-items: center;
+
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.settings-row input[type="checkbox"] {
+  transform: translateY(1px);
+}
+
+/* Triad lights */
+.triad-lights {
+  margin-top: 6px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 6px;
   align-items: center;
 }
 
-.settings-row label {
-  font-size: 0.9rem;
-  color: var(--text-soft);
-}
-
-.settings-row select {
-  flex: 1 1 190px;
-  background: #0f1020;
+/* ✅ IMPORTANT: display inline-block so width/height apply */
+.triad-light {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
-  border: 1px solid #3b3b4f;
-  padding: 6px 12px;
-  color: var(--text-soft);
-  font-size: 0.9rem;
-  outline: none;
+  border: 1px solid #555;
+  background: #222;
 }
 
-.settings-row select:focus {
-  border-color: var(--accent);
+.triad-light.on {
+  background: var(--good);
+  border-color: var(--good);
 }
-
-.settings-hint {
-  margin-top: 8px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-/* Placeholder (trainer 2) */
 
 .coming-soon {
   margin: 10px 0 6px;
@@ -235,42 +241,15 @@ body {
   color: var(--text-muted);
 }
 
-.placeholder-box {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #151629;
-  font-size: 0.85rem;
-  color: var(--text-soft);
-  border: 1px dashed #3b3b4f;
-}
-
 /* Responsive */
-
 @media (max-width: 600px) {
-  .page {
-    padding: 20px 12px 28px;
-  }
+  .page { padding: 20px 12px 28px; }
 
   .app {
     padding: 16px 14px 18px;
     border-radius: 14px;
   }
 
-  .controls {
-    gap: 8px;
-  }
-
-  .btn {
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-
-  .settings-row {
-    align-items: stretch;
-  }
-
-  .settings-row label {
-    width: 100%;
-  }
+  .controls { gap: 8px; }
+  .btn { flex: 1 1 auto; }
 }
