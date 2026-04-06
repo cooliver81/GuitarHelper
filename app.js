@@ -8,6 +8,124 @@
     await window.AudioEngine.start(callback);
   }
 
+  function stopMicAudio() {
+    window.AudioEngine.stop();
+  }
+
+  //
+  // -------- Shared note helpers for tuner / drone --------
+  //
+  const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function noteOctaveToMidi(noteName, octave) {
+    const pitchClass = NOTE_NAMES.indexOf(noteName);
+    if (pitchClass < 0) return null;
+    return (octave + 1) * 12 + pitchClass;
+  }
+
+  function freqToNearestMidi(freq) {
+    if (!freq || freq <= 0) return null;
+    return Math.round(69 + 12 * Math.log2(freq / 440));
+  }
+
+  function centsOffFromMidi(freq, midi) {
+    const exactFreq = midiToFreq(midi);
+    return Math.round(1200 * Math.log2(freq / exactFreq));
+  }
+
+  //
+  // -------- Playback engine: metronome + drone --------
+  //
+  let playbackCtx = null;
+  let metronomeIntervalId = null;
+  let metronomeStep = 0;
+  let droneOsc = null;
+  let droneGain = null;
+
+  function getPlaybackContext() {
+    if (!playbackCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      playbackCtx = new AudioCtx();
+    }
+    return playbackCtx;
+  }
+
+  async function ensurePlaybackContextRunning() {
+    const ctx = getPlaybackContext();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+    return ctx;
+  }
+
+  function stopDrone() {
+    if (droneOsc) {
+      try { droneOsc.stop(); } catch (_) {}
+      try { droneOsc.disconnect(); } catch (_) {}
+      droneOsc = null;
+    }
+    if (droneGain) {
+      try { droneGain.disconnect(); } catch (_) {}
+      droneGain = null;
+    }
+  }
+
+  function startDrone(freq) {
+    const ctx = getPlaybackContext();
+    stopDrone();
+
+    droneOsc = ctx.createOscillator();
+    droneGain = ctx.createGain();
+
+    droneOsc.type = "sine";
+    droneOsc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    droneGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    droneGain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.15);
+
+    droneOsc.connect(droneGain);
+    droneGain.connect(ctx.destination);
+    droneOsc.start();
+  }
+
+  function updateDroneFrequency(freq) {
+    if (!droneOsc || !playbackCtx) return;
+    droneOsc.frequency.setTargetAtTime(freq, playbackCtx.currentTime, 0.03);
+  }
+
+  function playClick(accented) {
+    const ctx = getPlaybackContext();
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = accented ? "square" : "sine";
+    osc.frequency.setValueAtTime(accented ? 1400 : 1000, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(accented ? 0.18 : 0.10, ctx.currentTime + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.06);
+  }
+
+  function stopMetronomePlayback() {
+    if (metronomeIntervalId) {
+      clearInterval(metronomeIntervalId);
+      metronomeIntervalId = null;
+    }
+    metronomeStep = 0;
+    stopDrone();
+  }
+
   //
   // ---------- SINGLE-NOTE TRAINER ----------
   //
@@ -75,9 +193,10 @@
       log("Requesting microphone access…", "info");
       setStatus("Requesting mic permission…");
 
-      // Stop triad UI
       if (triadStartBtn) triadStartBtn.disabled = false;
       if (triadStopBtn) triadStopBtn.disabled = true;
+      if (tunerStartBtn) tunerStartBtn.disabled = false;
+      if (tunerStopBtn) tunerStopBtn.disabled = true;
 
       await startAudio(onPitchDetected);
 
@@ -98,7 +217,7 @@
   }
 
   function handleStop() {
-    window.AudioEngine.stop();
+    stopMicAudio();
     setStatus("Mic stopped.");
     log("Stopped listening.", "info");
     if (startBtn) startBtn.disabled = false;
@@ -141,7 +260,9 @@
       setStatus("Try again…");
       waitingForNextTarget = true;
 
-      setTimeout(() => { waitingForNextTarget = false; }, 500);
+      setTimeout(() => {
+        waitingForNextTarget = false;
+      }, 500);
     }
   }
 
@@ -151,6 +272,288 @@
   updateTargetDisplay();
   updateStats();
   log("Ready.\nClick ‘Start’ to begin.", "info");
+
+  //
+  // ---------- TUNER ----------
+  //
+  const tunerStartBtn = document.getElementById("tunerStartBtn");
+  const tunerStopBtn = document.getElementById("tunerStopBtn");
+  const tunerNoteEl = document.getElementById("tunerNote");
+  const tunerFreqEl = document.getElementById("tunerFreq");
+  const tunerStatusText = document.getElementById("tunerStatusText");
+  const tunerStatsText = document.getElementById("tunerStatsText");
+  const tunerLogDiv = document.getElementById("tunerLog");
+
+  let tunerLastEvent = null;
+  const TUNER_EVENT_DEBOUNCE_SECONDS = 0.12;
+
+  function tunerLog(message, level = "info") {
+    if (!tunerLogDiv) return;
+    tunerLogDiv.className = "log";
+    if (level === "good") tunerLogDiv.classList.add("log-good");
+    if (level === "warn") tunerLogDiv.classList.add("log-warn");
+    if (level === "bad") tunerLogDiv.classList.add("log-bad");
+    tunerLogDiv.textContent = message;
+  }
+
+  function setTunerStatus(msg) {
+    if (!tunerStatusText) return;
+    tunerStatusText.innerHTML = `Status: ${msg}`;
+  }
+
+  function updateTunerDisplay(freq) {
+    const midi = freqToNearestMidi(freq);
+    if (midi == null) return;
+
+    const noteName = NOTE_NAMES[midi % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    const cents = centsOffFromMidi(freq, midi);
+
+    if (tunerNoteEl) tunerNoteEl.textContent = `${noteName}${octave}`;
+    if (tunerFreqEl) tunerFreqEl.textContent = `${freq.toFixed(1)} Hz`;
+
+    let centsText = `${cents > 0 ? "+" : ""}${cents} cents`;
+    let level = "warn";
+    let status = "Adjust pitch…";
+
+    if (Math.abs(cents) <= 5) {
+      centsText = `${cents > 0 ? "+" : ""}${cents} cents · In tune`;
+      level = "good";
+      status = "In tune.";
+    } else if (cents < 0) {
+      status = "Flat. Tune up.";
+    } else {
+      status = "Sharp. Tune down.";
+    }
+
+    if (tunerStatsText) tunerStatsText.textContent = `Deviation: ${centsText}`;
+    setTunerStatus(status);
+    tunerLog(`Heard ${noteName}${octave} at ${freq.toFixed(1)} Hz`, level);
+  }
+
+  async function handleTunerStart() {
+    try {
+      tunerLog("Requesting microphone access…", "info");
+      setTunerStatus("Requesting mic permission…");
+
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+      if (triadStartBtn) triadStartBtn.disabled = false;
+      if (triadStopBtn) triadStopBtn.disabled = true;
+
+      await startAudio(onTunerPitchDetected);
+
+      if (tunerStartBtn) tunerStartBtn.disabled = true;
+      if (tunerStopBtn) tunerStopBtn.disabled = false;
+
+      setTunerStatus("Listening…");
+      tunerLog("Mic access granted. Play one note at a time.", "info");
+    } catch (err) {
+      console.error(err);
+      tunerLog("Error accessing microphone: " + err.message, "bad");
+      setTunerStatus("Mic error. Check permissions and default input device.");
+    }
+  }
+
+  function handleTunerStop() {
+    stopMicAudio();
+    if (tunerStartBtn) tunerStartBtn.disabled = false;
+    if (tunerStopBtn) tunerStopBtn.disabled = true;
+    setTunerStatus("Mic stopped.");
+    tunerLog("Stopped listening.", "info");
+    if (tunerNoteEl) tunerNoteEl.textContent = "--";
+    if (tunerFreqEl) tunerFreqEl.textContent = "0.0 Hz";
+    if (tunerStatsText) tunerStatsText.textContent = "Deviation: -- cents";
+  }
+
+  function onTunerPitchDetected(freq) {
+    const midi = freqToNearestMidi(freq);
+    if (midi == null) return;
+
+    const label = midi;
+    const now = performance.now() / 1000;
+    if (tunerLastEvent && tunerLastEvent.label === label && now - tunerLastEvent.time < TUNER_EVENT_DEBOUNCE_SECONDS) {
+      updateTunerDisplay(freq);
+      return;
+    }
+
+    tunerLastEvent = { label, time: now };
+    updateTunerDisplay(freq);
+  }
+
+  if (tunerStartBtn) tunerStartBtn.addEventListener("click", handleTunerStart);
+  if (tunerStopBtn) tunerStopBtn.addEventListener("click", handleTunerStop);
+
+  tunerLog("Tuner ready. Click ‘Start tuner’ to begin.", "info");
+
+  //
+  // ---------- METRONOME + DRONE ----------
+  //
+  const metroBpmEl = document.getElementById("metroBpm");
+  const metroBpmValueEl = document.getElementById("metroBpmValue");
+  const metroSubdivisionEl = document.getElementById("metroSubdivision");
+  const metroAccentEl = document.getElementById("metroAccent");
+  const droneEnabledEl = document.getElementById("droneEnabled");
+  const droneNoteEl = document.getElementById("droneNote");
+  const droneOctaveEl = document.getElementById("droneOctave");
+  const metroStartBtn = document.getElementById("metroStartBtn");
+  const metroStopBtn = document.getElementById("metroStopBtn");
+  const metroBeatText = document.getElementById("metroBeatText");
+  const droneNowText = document.getElementById("droneNowText");
+  const metroStatusText = document.getElementById("metroStatusText");
+  const metroLogDiv = document.getElementById("metroLog");
+
+  function metroLog(message, level = "info") {
+    if (!metroLogDiv) return;
+    metroLogDiv.className = "log";
+    if (level === "good") metroLogDiv.classList.add("log-good");
+    if (level === "warn") metroLogDiv.classList.add("log-warn");
+    if (level === "bad") metroLogDiv.classList.add("log-bad");
+    metroLogDiv.textContent = message;
+  }
+
+  function setMetroStatus(msg) {
+    if (!metroStatusText) return;
+    metroStatusText.innerHTML = `Status: ${msg}`;
+  }
+
+  function getDroneLabel() {
+    const note = droneNoteEl ? droneNoteEl.value : "C";
+    const octave = droneOctaveEl ? droneOctaveEl.value : "3";
+    return `${note}${octave}`;
+  }
+
+  function getDroneFrequency() {
+    const note = droneNoteEl ? droneNoteEl.value : "C";
+    const octave = droneOctaveEl ? parseInt(droneOctaveEl.value, 10) : 3;
+    const midi = noteOctaveToMidi(note, octave);
+    return midiToFreq(midi);
+  }
+
+  function updateMetronomeReadout() {
+    if (metroBpmValueEl && metroBpmEl) {
+      metroBpmValueEl.textContent = metroBpmEl.value;
+    }
+
+    if (droneNowText) {
+      if (droneEnabledEl && droneEnabledEl.checked) {
+        droneNowText.textContent = `Drone: ${getDroneLabel()}`;
+      } else {
+        droneNowText.textContent = "Drone: Off";
+      }
+    }
+  }
+
+  function restartMetronomeIfRunning() {
+    if (metroStartBtn && metroStartBtn.disabled) {
+      startMetronomeAndDrone();
+    }
+  }
+
+  async function startMetronomeAndDrone() {
+    try {
+      await ensurePlaybackContextRunning();
+      stopMetronomePlayback();
+
+      const bpm = metroBpmEl ? parseInt(metroBpmEl.value, 10) : 90;
+      const subdivision = metroSubdivisionEl ? parseInt(metroSubdivisionEl.value, 10) : 1;
+      const accentBeat1 = !!(metroAccentEl && metroAccentEl.checked);
+
+      const intervalMs = 60000 / (bpm * subdivision);
+      metronomeStep = 0;
+
+      if (droneEnabledEl && droneEnabledEl.checked) {
+        startDrone(getDroneFrequency());
+      } else {
+        stopDrone();
+      }
+
+      metronomeIntervalId = setInterval(() => {
+        const stepInBar = metronomeStep % (4 * subdivision);
+        const isDownbeat = stepInBar === 0;
+        const isQuarterBoundary = stepInBar % subdivision === 0;
+        const beatNumber = Math.floor(stepInBar / subdivision) + 1;
+
+        playClick(accentBeat1 ? isDownbeat : isQuarterBoundary);
+
+        if (metroBeatText) {
+          metroBeatText.textContent = String(beatNumber);
+        }
+
+        metronomeStep++;
+      }, intervalMs);
+
+      if (metroStartBtn) metroStartBtn.disabled = true;
+      if (metroStopBtn) metroStopBtn.disabled = false;
+
+      updateMetronomeReadout();
+      setMetroStatus("Running.");
+      metroLog(
+        `Metronome running at ${bpm} BPM${droneEnabledEl && droneEnabledEl.checked ? ` with drone ${getDroneLabel()}` : ""}.`,
+        "good"
+      );
+    } catch (err) {
+      console.error(err);
+      metroLog("Could not start playback: " + err.message, "bad");
+      setMetroStatus("Playback error.");
+    }
+  }
+
+  function stopMetronomeAndDrone() {
+    stopMetronomePlayback();
+    if (metroStartBtn) metroStartBtn.disabled = false;
+    if (metroStopBtn) metroStopBtn.disabled = true;
+    if (metroBeatText) metroBeatText.textContent = "1";
+    updateMetronomeReadout();
+    setMetroStatus("Stopped.");
+    metroLog("Metronome stopped.", "info");
+  }
+
+  if (metroBpmEl) {
+    metroBpmEl.addEventListener("input", () => {
+      updateMetronomeReadout();
+      restartMetronomeIfRunning();
+    });
+  }
+
+  if (metroSubdivisionEl) {
+    metroSubdivisionEl.addEventListener("change", restartMetronomeIfRunning);
+  }
+
+  if (metroAccentEl) {
+    metroAccentEl.addEventListener("change", restartMetronomeIfRunning);
+  }
+
+  if (droneEnabledEl) {
+    droneEnabledEl.addEventListener("change", () => {
+      updateMetronomeReadout();
+      restartMetronomeIfRunning();
+    });
+  }
+
+  if (droneNoteEl) {
+    droneNoteEl.addEventListener("change", () => {
+      updateMetronomeReadout();
+      if (droneOsc && droneEnabledEl && droneEnabledEl.checked) {
+        updateDroneFrequency(getDroneFrequency());
+      }
+    });
+  }
+
+  if (droneOctaveEl) {
+    droneOctaveEl.addEventListener("change", () => {
+      updateMetronomeReadout();
+      if (droneOsc && droneEnabledEl && droneEnabledEl.checked) {
+        updateDroneFrequency(getDroneFrequency());
+      }
+    });
+  }
+
+  if (metroStartBtn) metroStartBtn.addEventListener("click", startMetronomeAndDrone);
+  if (metroStopBtn) metroStopBtn.addEventListener("click", stopMetronomeAndDrone);
+
+  updateMetronomeReadout();
+  metroLog("Metronome ready. Click ‘Start metronome’ to begin.", "info");
 
   //
   // ---------- TRIAD TRAINER ----------
@@ -163,7 +566,6 @@
   const triadLogDiv = document.getElementById("triadLog");
   const triadLightsEl = document.getElementById("triadLights");
 
-  // NEW: quality toggles
   const qualMajorEl = document.getElementById("qualMajor");
   const qualMinorEl = document.getElementById("qualMinor");
 
@@ -174,7 +576,7 @@
   let currentTriad = null;
   let triadSession = null;
   let triadCorrectCount = 0;
-  let triadFailCount = 0; // wrong note resets
+  let triadFailCount = 0;
   let currentString = null;
 
   function triadLog(message, level = "info") {
@@ -208,13 +610,11 @@
   function getAllowedQualities() {
     const q = [];
 
-    // If toggles missing, default major only
     if (!qualMajorEl && !qualMinorEl) return [window.Triads.TriadQuality.MAJOR];
 
     if (qualMajorEl?.checked) q.push(window.Triads.TriadQuality.MAJOR);
     if (qualMinorEl?.checked) q.push(window.Triads.TriadQuality.MINOR);
 
-    // Never allow empty
     if (q.length === 0) return [window.Triads.TriadQuality.MAJOR];
     return q;
   }
@@ -222,7 +622,6 @@
   function ensureTriadTrainer() {
     triadTrainer = new window.Triads.TriadTrainer({
       allowedQualities: getAllowedQualities(),
-      // keep defaults for roots + inversions unless you want more controls later
     });
   }
 
@@ -271,9 +670,10 @@
       triadLog("Requesting microphone access…", "info");
       setTriadStatus("Requesting mic permission…");
 
-      // Stop single-note UI
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      if (tunerStartBtn) tunerStartBtn.disabled = false;
+      if (tunerStopBtn) tunerStopBtn.disabled = true;
 
       await startAudio(onTriadPitchDetected);
 
@@ -294,7 +694,7 @@
   }
 
   function handleTriadStop() {
-    window.AudioEngine.stop();
+    stopMicAudio();
     setTriadStatus("Mic stopped.");
     triadLog("Stopped listening.", "info");
     if (triadStartBtn) triadStartBtn.disabled = false;
@@ -311,7 +711,6 @@
     const heardName = window.Fretboard.midiToNoteName(roundedMidi);
     const heardPitchClass = window.Fretboard.pitchClassName(roundedMidi);
 
-    // UI debounce to avoid spam
     const label = heardPitchClass;
     const now = performance.now() / 1000;
 
@@ -329,11 +728,8 @@
     else triadLog(msg + " → ❌ Wrong.", "bad");
 
     const seq = getSeq(triadSession, res);
-
-    // update dots (optional)
     renderLights(res.matchedCount || 0, 3);
 
-    // wrong note resets attempt, SAME triad
     if (res.reset) {
       triadFailCount++;
       updateTriadStats();
@@ -342,7 +738,6 @@
       return;
     }
 
-    // success => new triad
     if (res.status === "success") {
       triadCorrectCount++;
       updateTriadStats();
@@ -355,17 +750,14 @@
       return;
     }
 
-    // pending => show next note number
     const matched = typeof res.matchedCount === "number" ? res.matchedCount : 0;
     const nextIndex = Math.min(matched, 2);
     setTriadStatus(`Listening… ${notePrompt(seq, nextIndex)}`);
   }
 
-  // Apply toggle changes live (if triad trainer running, immediately refresh triad)
   [qualMajorEl, qualMinorEl].forEach((el) => {
     if (!el) return;
     el.addEventListener("change", () => {
-      // keep at least one checked (UI safety)
       if (qualMajorEl && qualMinorEl && !qualMajorEl.checked && !qualMinorEl.checked) {
         qualMajorEl.checked = true;
       }
@@ -381,4 +773,12 @@
   updateTriadTargetDisplay();
   updateTriadStats();
   triadLog("Triad trainer ready. Click ‘Start’ to begin.", "info");
+
+  //
+  // -------- Cleanup on page hide --------
+  //
+  window.addEventListener("beforeunload", () => {
+    try { stopMicAudio(); } catch (_) {}
+    try { stopMetronomePlayback(); } catch (_) {}
+  });
 })();

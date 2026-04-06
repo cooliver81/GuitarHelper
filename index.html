@@ -12,7 +12,121 @@
 <body>
   <div class="page">
 
-    <!-- Single-note Fretboard Trainer -->
+    <!-- Tuner -->
+    <section class="app app-secondary">
+      <header class="app-header">
+        <h1>Tuner</h1>
+        <p class="app-subtitle">Live note detection with cents deviation.</p>
+      </header>
+
+      <div class="controls">
+        <button id="tunerStartBtn" class="btn primary">🎙 Start tuner</button>
+        <button id="tunerStopBtn" class="btn secondary" disabled>⏹ Stop tuner</button>
+      </div>
+
+      <div class="target">
+        Note:
+        <span class="note" id="tunerNote">--</span>
+        ·
+        <span class="string" id="tunerFreq">0.0 Hz</span>
+      </div>
+
+      <div class="status" id="tunerStatusText">
+        Status: Mic idle.
+      </div>
+
+      <p class="stats" id="tunerStatsText">
+        Deviation: -- cents
+      </p>
+
+      <div id="tunerLog" class="log">
+        Tuner ready. Click “Start tuner” to begin.
+      </div>
+    </section>
+
+    <!-- Metronome + Drone -->
+    <section class="app app-secondary">
+      <header class="app-header">
+        <h1>Metronome + Drone</h1>
+        <p class="app-subtitle">Choose a drone note and lock it in with tempo.</p>
+      </header>
+
+      <div class="settings-row">
+        <label for="metroBpm">BPM</label>
+        <input id="metroBpm" type="range" min="40" max="240" step="1" value="90" />
+        <span id="metroBpmValue">90</span>
+      </div>
+
+      <div class="settings-row">
+        <label for="metroSubdivision">Subdivision</label>
+        <select id="metroSubdivision">
+          <option value="1">Quarter notes</option>
+          <option value="2">8th notes</option>
+          <option value="3">Triplets</option>
+          <option value="4">16th notes</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label>
+          <input type="checkbox" id="metroAccent" checked />
+          Accent beat 1
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <label>
+          <input type="checkbox" id="droneEnabled" checked />
+          Enable drone
+        </label>
+
+        <label for="droneNote">Drone note</label>
+        <select id="droneNote">
+          <option>C</option>
+          <option>C#</option>
+          <option>D</option>
+          <option>D#</option>
+          <option>E</option>
+          <option>F</option>
+          <option>F#</option>
+          <option>G</option>
+          <option>G#</option>
+          <option>A</option>
+          <option>A#</option>
+          <option>B</option>
+        </select>
+
+        <label for="droneOctave">Octave</label>
+        <select id="droneOctave">
+          <option>2</option>
+          <option selected>3</option>
+          <option>4</option>
+          <option>5</option>
+        </select>
+      </div>
+
+      <div class="controls">
+        <button id="metroStartBtn" class="btn primary">▶ Start metronome</button>
+        <button id="metroStopBtn" class="btn secondary" disabled>⏹ Stop metronome</button>
+      </div>
+
+      <div class="target">
+        Beat:
+        <span class="note" id="metroBeatText">1</span>
+        ·
+        <span class="string" id="droneNowText">Drone: C3</span>
+      </div>
+
+      <div class="status" id="metroStatusText">
+        Status: Ready.
+      </div>
+
+      <div id="metroLog" class="log">
+        Metronome ready. Press “Start metronome” to begin.
+      </div>
+    </section>
+
+        <!-- Single-note Fretboard Trainer -->
     <section class="app">
       <header class="app-header">
         <h1>Fretboard Trainer</h1>
@@ -56,7 +170,6 @@
         <button id="triadStopBtn" class="btn secondary" disabled>⏹ Stop</button>
       </div>
 
-      <!-- NEW: quality selector -->
       <div class="settings-row">
         <label><input type="checkbox" id="qualMajor" checked> Major</label>
         <label><input type="checkbox" id="qualMinor" checked> Minor</label>
@@ -75,7 +188,6 @@
         Correct triads: 0 • Failed triads: 0
       </p>
 
-      <!-- Optional progress dots (app.js will render them if present) -->
       <div id="triadLights" class="triad-lights"></div>
 
       <div id="triadLog" class="log">
@@ -89,7 +201,6 @@
 
   </div>
 
-  <!-- Scripts (safe order) -->
   <script src="fretboard.js"></script>
   <script src="triads.js"></script>
   <script src="audioEngine.js"></script>
