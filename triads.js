@@ -321,8 +321,15 @@
 
     nextQuestion() {
       const triad = this.randomTriad();
-      const possibleStrings = [6, 5, 4];
+
+      // Choose the LOWEST string of the 3-string set:
+      // 6 => strings 6–5–4 (6–4)
+      // 5 => strings 5–4–3 (5–3)
+      // 4 => strings 4–3–2 (4–2)
+      // 3 => strings 3–2–1 (3–1)  ✅ now included
+      const possibleStrings = [6, 5, 4, 3];
       const string = randomChoice(possibleStrings);
+
       return { triad, string };
     }
   }
