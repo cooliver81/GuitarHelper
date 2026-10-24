@@ -1,0 +1,11 @@
+{
+  "name": "guitarhelper",
+  "private": true,
+  "type": "module",
+  "description": "Browser guitar practice app: scale shapes, quizzes, play-along with auto-sync",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "start": "npx serve ."
+  }
+}

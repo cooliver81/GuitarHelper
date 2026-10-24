@@ -2,208 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fretboard Trainer</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a0c14" />
+  <title>GuitarHelper</title>
+  <meta name="description" content="Guitar practice in the browser: scale and shape diagrams with quizzes, play-along over chord progressions and recordings, tuner, metronome and mic drills. Nothing leaves your device." />
+  <!-- Only this site's own files run; YouTube is allowed for the optional play-along embed. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self' blob:; media-src 'self' blob:; img-src 'self' data: https://i.ytimg.com; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="GuitarHelper" />
+  <meta property="og:description" content="Learn scale shapes across the neck, quiz yourself, and play along with backing tracks or your own recordings. Runs in the browser; nothing leaves your device." />
+  <meta property="og:url" content="https://cooliver81.github.io/GuitarHelper/" />
+  <meta property="og:image" content="https://cooliver81.github.io/GuitarHelper/docs/img/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="stylesheet" href="style.css" />
-
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B8%3C/text%3E%3C/svg%3E">
+  <!-- Tab icon: the 🎸 emoji itself, drawn by the visitor's own emoji font. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B8%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="icon.png" />
 </head>
-
 <body>
-  <div class="page">
-
-    <!-- Tuner -->
-    <section class="app app-secondary">
-      <header class="app-header">
-        <h1>Tuner</h1>
-        <p class="app-subtitle">Live note detection with cents deviation.</p>
-      </header>
-
-      <div class="controls">
-        <button id="tunerStartBtn" class="btn primary">🎙 Start tuner</button>
-        <button id="tunerStopBtn" class="btn secondary" disabled>⏹ Stop tuner</button>
-      </div>
-
-      <div class="target">
-        Note:
-        <span class="note" id="tunerNote">--</span>
-        ·
-        <span class="string" id="tunerFreq">0.0 Hz</span>
-      </div>
-
-      <div class="status" id="tunerStatusText">
-        Status: Mic idle.
-      </div>
-
-      <p class="stats" id="tunerStatsText">
-        Deviation: -- cents
-      </p>
-
-      <div id="tunerLog" class="log">
-        Tuner ready. Click “Start tuner” to begin.
-      </div>
-    </section>
-
-    <!-- Metronome + Drone -->
-    <section class="app app-secondary">
-      <header class="app-header">
-        <h1>Metronome + Drone</h1>
-        <p class="app-subtitle">Choose a drone note and lock it in with tempo.</p>
-      </header>
-
-      <div class="settings-row">
-        <label for="metroBpm">BPM</label>
-        <input id="metroBpm" type="range" min="40" max="240" step="1" value="90" />
-        <span id="metroBpmValue">90</span>
-      </div>
-
-      <div class="settings-row">
-        <label for="metroSubdivision">Subdivision</label>
-        <select id="metroSubdivision">
-          <option value="1">Quarter notes</option>
-          <option value="2">8th notes</option>
-          <option value="3">Triplets</option>
-          <option value="4">16th notes</option>
-        </select>
-      </div>
-
-      <div class="settings-row">
-        <label>
-          <input type="checkbox" id="metroAccent" checked />
-          Accent beat 1
-        </label>
-      </div>
-
-      <div class="settings-row">
-        <label>
-          <input type="checkbox" id="droneEnabled" checked />
-          Enable drone
-        </label>
-
-        <label for="droneNote">Drone note</label>
-        <select id="droneNote">
-          <option>C</option>
-          <option>C#</option>
-          <option>D</option>
-          <option>D#</option>
-          <option>E</option>
-          <option>F</option>
-          <option>F#</option>
-          <option>G</option>
-          <option>G#</option>
-          <option>A</option>
-          <option>A#</option>
-          <option>B</option>
-        </select>
-
-        <label for="droneOctave">Octave</label>
-        <select id="droneOctave">
-          <option>2</option>
-          <option selected>3</option>
-          <option>4</option>
-          <option>5</option>
-        </select>
-      </div>
-
-      <div class="controls">
-        <button id="metroStartBtn" class="btn primary">▶ Start metronome</button>
-        <button id="metroStopBtn" class="btn secondary" disabled>⏹ Stop metronome</button>
-      </div>
-
-      <div class="target">
-        Beat:
-        <span class="note" id="metroBeatText">1</span>
-        ·
-        <span class="string" id="droneNowText">Drone: C3</span>
-      </div>
-
-      <div class="status" id="metroStatusText">
-        Status: Ready.
-      </div>
-
-      <div id="metroLog" class="log">
-        Metronome ready. Press “Start metronome” to begin.
-      </div>
-    </section>
-
-        <!-- Single-note Fretboard Trainer -->
-    <section class="app">
-      <header class="app-header">
-        <h1>Fretboard Trainer</h1>
-        <p class="app-subtitle">Single-note trainer for the first 12 frets.</p>
-      </header>
-
-      <div class="controls">
-        <button id="startBtn" class="btn primary">▶ Start</button>
-        <button id="stopBtn" class="btn secondary" disabled>⏹ Stop</button>
-      </div>
-
-      <div class="target" id="targetText">
-        Target:
-        <span class="string">-</span>
-        ·
-        <span class="note">-</span>
-      </div>
-
-      <div class="status" id="statusText">
-        Status: Mic idle.
-      </div>
-
-      <p class="stats" id="statsText">
-        Correct: 0 • Mistakes: 0
-      </p>
-
-      <div id="log" class="log">
-        Ready. Click “Start” to begin.
-      </div>
-    </section>
-
-    <!-- Triad Trainer -->
-    <section class="app app-secondary">
-      <header class="app-header">
-        <h1>Triad Trainer</h1>
-        <p class="app-subtitle">Triads + inversions, one note at a time.</p>
-      </header>
-
-      <div class="controls">
-        <button id="triadStartBtn" class="btn primary">▶ Start</button>
-        <button id="triadStopBtn" class="btn secondary" disabled>⏹ Stop</button>
-      </div>
-
-      <div class="settings-row">
-        <label><input type="checkbox" id="qualMajor" checked> Major</label>
-        <label><input type="checkbox" id="qualMinor" checked> Minor</label>
-      </div>
-
-      <div class="target" id="triadTargetText">
-        Target triad:
-        <span class="triad-label">–</span>
-      </div>
-
-      <div class="status" id="triadStatusText">
-        Status: Mic idle.
-      </div>
-
-      <p class="stats" id="triadStatsText">
-        Correct triads: 0 • Failed triads: 0
-      </p>
-
-      <div id="triadLights" class="triad-lights"></div>
-
-      <div id="triadLog" class="log">
-        Triad trainer ready. Press “Start” and play the three notes in order.
-      </div>
-
-      <p class="coming-soon">
-        Tip: Toggle Major/Minor above to control what you practice.
-      </p>
-    </section>
-
-  </div>
-
-  <script src="fretboard.js"></script>
-  <script src="triads.js"></script>
-  <script src="audioEngine.js"></script>
-  <script src="app.js"></script>
+  <header class="top">
+    <div class="top-inner">
+      <button class="brand" id="brand" title="Home: Diagrams">
+        <img class="brand-mark" src="icon.svg" alt="" width="26" height="26" />
+        <span class="brand-name">GuitarHelper</span>
+      </button>
+      <nav id="tabs" aria-label="Sections"></nav>
+    </div>
+    <nav id="subnav" class="subnav" aria-label="Tools in this section" hidden></nav>
+  </header>
+  <main id="main"></main>
+  <noscript>GuitarHelper needs JavaScript.</noscript>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>
