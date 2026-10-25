@@ -228,8 +228,8 @@ diagrams in the sources.
 2026-10-25: M0–M8 committed (719fe26) and live at https://cooliver81.github.io/GuitarHelper/ (the live
 `index.html` matches the repo). 65 unit tests pass. Release audit (2026-10-23): no secrets, no personal data
 in the tree, no song content, no XSS paths; MIT licence; Twemoji icon (CC-BY 4.0, credited).
-Still open (Oliver decides): old commit `efeabfc` (2025-12-09) has a work email as author and is public on
-GitHub. Removing it means rewriting history and force-pushing `main`.
+History rewritten 2026-10-25: every commit's author is now the GitHub noreply address (one had a work email,
+13 a personal one). All commit hashes changed; files, messages and dates did not.
 Not checked by hand: real guitar through a real mic, iOS Safari, auto-sync on real recordings.
 Next: Oliver uses Diagrams for a week and lists what's missing.
 
@@ -292,4 +292,6 @@ Next: Oliver uses Diagrams for a week and lists what's missing.
   (kept `docs/img/og.png`, the link-preview image `index.html` points to).
 - **2026-10-25 (post-push check):** The rewrite was pushed to `main` and Pages serves it. 65 tests pass; README
   and `index.html` links resolve; no personal strings in the tree. Ticked the two finished M0 items and brought
-  the Status up to date. The work-email commit is still in the public history (see Status).
+  the Status up to date. Then rewrote the history (`git filter-branch --env-filter`) so the work-email commit and the
+  personal-Gmail commits all use the noreply address; checked that the final tree hash, commit count, messages and
+  dates are unchanged, and force-pushed.
