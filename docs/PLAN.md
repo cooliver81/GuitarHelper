@@ -91,8 +91,8 @@ Trade-off: ES modules don't load from `file://`. Local dev becomes `npx serve` o
 
 ### M0: housekeeping (≤1 h)
 - [x] README to UTF-8, `.gitignore`, delete `__pycache__/`, fix `<title>`, add viewport meta
-- [ ] Set `user.email` to the GitHub noreply address in this repo before the first commit
-- [ ] Turn on GitHub Pages and link the live demo from the README
+- [x] Set `user.email` to the GitHub noreply address in this repo before the first commit
+- [x] Turn on GitHub Pages and link the live demo from the README
 
 ### M1: restructure without changing behaviour (2–3 h)
 - [x] Move to `src/` modules as above; delete the duplicates (#11)
@@ -225,17 +225,13 @@ diagrams in the sources.
 
 ## Status
 
-2026-10-23: M0–M8 built and release-checked, not committed yet. 65 unit tests pass. Headless
-Edge runs every section with no console errors and no Content-Security-Policy violations
-(backing track, tuner, auto-sync worker, YouTube embed all checked under the policy).
-Release audit done (two review agents): no secrets, no personal data in the tree, no song
-content, no XSS paths; MIT licence added; icon is the Twemoji guitar (CC-BY 4.0, credited in
-the README and in `icon.svg`).
-Before the first push (Oliver decides): one old commit carries a work email as author
-(history rewrite + force-push to remove it); clear any custom domain in Settings → Pages.
-Repo-local git identity is set to the GitHub noreply address.
+2026-10-25: M0–M8 committed (719fe26) and live at https://cooliver81.github.io/GuitarHelper/ (the live
+`index.html` matches the repo). 65 unit tests pass. Release audit (2026-10-23): no secrets, no personal data
+in the tree, no song content, no XSS paths; MIT licence; Twemoji icon (CC-BY 4.0, credited).
+Still open (Oliver decides): old commit `efeabfc` (2025-12-09) has a work email as author and is public on
+GitHub. Removing it means rewriting history and force-pushing `main`.
 Not checked by hand: real guitar through a real mic, iOS Safari, auto-sync on real recordings.
-Next: Oliver commits, pushes and turns on GitHub Pages; Oliver uses Diagrams for a week and lists what's missing.
+Next: Oliver uses Diagrams for a week and lists what's missing.
 
 ## Session log
 
@@ -294,3 +290,6 @@ Next: Oliver commits, pushes and turns on GitHub Pages; Oliver uses Diagrams for
 - **2026-10-23 (short README):** Oliver asked for a short README: purpose, a basic tech
   breakdown and how it works, no screenshots. Rewrote it; removed the five README screenshots
   (kept `docs/img/og.png`, the link-preview image `index.html` points to).
+- **2026-10-25 (post-push check):** The rewrite was pushed to `main` and Pages serves it. 65 tests pass; README
+  and `index.html` links resolve; no personal strings in the tree. Ticked the two finished M0 items and brought
+  the Status up to date. The work-email commit is still in the public history (see Status).
