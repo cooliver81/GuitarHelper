@@ -20,6 +20,12 @@ and [`tests/`](tests/) the unit tests.
 
 - **Scales & shapes:** 18 scales in their five CAGED shapes, arpeggios, chord voicings, scale
   comparison, quizzes and a progress grid.
+- **Note names:** learn the notes of the neck and of scales without a guitar. Name a dot, find a
+  note on every string, name a fret across the strings, spell any scale, or name the notes of a
+  shape you already play. Spaced repetition brings back what you miss or answer slowly.
+- **Progressions:** ear practice away from the guitar. Pick a common progression or build
+  your own (up to four chords, triads or 7ths, any key) and hear it as chords or arpeggios,
+  with optional smooth voice leading and a "guess the numerals" quiz.
 - **Play along:** a synthesised backing band over chord progressions, or your own audio/video
   file (bars synced automatically) or a YouTube video.
 - **Mic drills:** find notes and play triads; the mic scores you.

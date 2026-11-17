@@ -357,6 +357,52 @@ input[type="file"] { color: var(--muted); font-size: 0.88rem; }
 .history th, .history td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 .transport { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 
+/* ---------- Progressions ---------- */
+.lab-chords { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lab-chord { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 112px; padding: 14px 6px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--card-border); border-radius: 10px; cursor: pointer; transition: background 0.08s; }
+.lab-chord:hover { background: var(--surface-hover); }
+.lab-chord.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.lab-chord.on { background: var(--accent); border-color: var(--accent); }
+.lab-chord.on .lab-notes, .lab-chord.on .lab-num { color: #e2eaff; }
+.lab-chord.add { background: none; border-style: dashed; color: var(--muted); font-size: 1.8rem; font-weight: 300; }
+.lab-chord.add:hover { color: var(--text); }
+.lab-num { position: absolute; top: 4px; left: 8px; font-size: 0.7rem; color: var(--faint); }
+.lab-roman { font-size: 1.9rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
+.lab-name { font-size: 1.05rem; font-weight: 650; }
+.lab-notes { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; color: var(--muted); }
+.lab-edit { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; padding-top: 10px; border-top: 1px solid var(--line); }
+.lab-edit:empty { display: none; }
+.lab-edit-title { align-self: center; }
+.chip.extra { border-style: dashed; }
+.lab-saved { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.lab-saved li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; border-bottom: 1px solid var(--line); padding: 2px 0; }
+.lab-saved li > .muted { flex: 1; }
+@media (max-width: 600px) {
+  .lab-chords { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-chord { min-height: 96px; }
+  .lab-roman { font-size: 1.6rem; }
+}
+
+/* ---------- Note names ---------- */
+.note-pad { display: grid; gap: 5px; }
+.note-pad.seven { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.note-pad.twelve { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.pad-btn { min-height: 44px; min-width: 0; padding: 0 2px; background: var(--surface); color: var(--text); border: 1px solid var(--card-border); border-radius: var(--radius-sm); font-weight: 700; cursor: pointer; }
+.pad-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: #3a4170; }
+.pad-btn:disabled { opacity: 0.45; cursor: default; }
+.notes-target { color: #fcd34d; }
+.notes-count { font-weight: 500; }
+.notes-seq { flex-wrap: wrap; }
+.notes-seq:empty { display: none; }
+.notes-seq .seq-note { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.notes-seq small { font-size: 0.68rem; font-weight: 500; opacity: 0.75; }
+.seq-note.now { box-shadow: inset 0 0 0 2px var(--accent); }
+.seq-note.missed { background: rgba(239, 68, 68, 0.25); color: #fecaca; }
+.chip.clean:not(.on) { border-color: var(--good); color: #bbf7d0; }
+.notes-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }
+.card > .chips:empty { display: none; }
+.card > .toolbar:empty { display: none; }
+
 /* ---------- Play-along ---------- */
 .media { display: flex; flex-direction: column; gap: 8px; }
 .media-audio { width: 100%; }

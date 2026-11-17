@@ -169,6 +169,31 @@ not everything at once.
 - [x] Phone: board shows a window of frets around the shape; nav and mode tabs scroll instead of wrapping
 - [x] Fixed from the beginner review: Compare spelled G minor's b6 as D# (now Eb, tested); quiz notes spelled in the question's key; quiz defaults no longer start on F# Mixolydian (common scales, fixed key)
 
+### M9: Progressions, ear practice without a guitar (2026-11-03)
+- [x] New tab (own nav group): one working progression of 1–4 chords stored as scale degrees, so it plays in any key
+- [x] 14 generic presets (pop I–V–vi–IV family, ii–V–I, turnarounds, Mixolydian, minor iv, Andalusian, minor forms)
+- [x] Build by hand: per-chord root degree + type (maj, m, dim, aug, maj7, m7, 7, m7b5, dim7), or click the key's
+      diatonic palette (plus borrowed chords); triads ⇄ 7ths converts the whole progression
+- [x] Playback: held chords, chords every beat, or arpeggios (up / down / up-down, 8ths or quarters); 2, 4 or 8 beats
+      per chord; smooth voice leading or root position; loop; click
+- [x] Ear quiz: random preset in a random key with names hidden, then reveal
+- [x] Saved progressions in `localStorage` only
+- Pure logic in `src/theory/chordLab.js` (presets, roman labels, triad/7th conversion, letter spelling, voicing,
+  arpeggio patterns), tested in `tests/chordLab.test.js`
+- Not built yet: a "which progression was that?" multiple-choice quiz with scoring; slash chords / inversions in the
+  bass; more than four chords
+
+### M10: Note names (2026-11-06)
+Oliver's teacher named the gap: knows shapes and the major scale by ear, but not the note names on the neck or in scales.
+- [x] New tab, click-based, no guitar or mic: Name the note, Find the note, Across a fret, Spell the scale, Name the shape
+- [x] Name the note: six stages (E string naturals → add A, D, G, B → sharps and flats), 20-question rounds, a Leitner
+      schedule per fret (1, 3, 7, 21 days; missed or slower than 3 s comes back straight away), colour-only neck map
+- [x] Spell the scale: letter-correct spelling in all 12 keys around the cycle of 4ths; 11 scales; "right sound, wrong letter" feedback
+- [x] Name the shape: walk a CAGED shape from its lowest note, naming each dot, with its degree as a hint
+- [x] "With the guitar" panel: say-it-aloud exercises, links to the mic drill and backing track
+- Pure logic in `src/theory/noteNames.js`, tested in `tests/noteNames.test.js`
+- The 3 s threshold and the intervals are my choice, not from a source. Change them if they feel wrong.
+
 ### Later
 From the 2026-10-23 skills review (general guitar skills the app doesn't cover yet):
 - **Ear training:** interval and chord-quality quiz (hear it, name it, then find it on the board);
@@ -232,6 +257,12 @@ History rewritten 2026-10-25: every commit's author is now the GitHub noreply ad
 13 a personal one). All commit hashes changed; files, messages and dates did not.
 Not checked by hand: real guitar through a real mic, iOS Safari, auto-sync on real recordings.
 Next: Oliver uses Diagrams for a week and lists what's missing.
+2026-11-03: M9 (Progressions tab) built locally, **not committed or pushed**. 74 unit tests pass. Checked in
+headless Edge at 390 px and 1280 px: renders, plays, quiz/reveal, palette building, save, no-loop stop; no console
+errors, no horizontal scroll. Not checked by ear: how the synth chords and arpeggios actually sound.
+2026-11-06: M10 (Note names tab) built locally, also **not committed or pushed**. 87 unit tests pass. Headless Edge
+at 390 px and 1280 px: every mode answered right and wrong, no console errors, no horizontal scroll. Not checked:
+real use over several days, so the spaced-repetition pacing is untested in practice.
 
 ## Session log
 
@@ -295,3 +326,13 @@ Next: Oliver uses Diagrams for a week and lists what's missing.
   the Status up to date. Then rewrote the history (`git filter-branch --env-filter`) so the work-email commit and the
   personal-Gmail commits all use the noreply address; checked that the final tree hash, commit count, messages and
   dates are unchanged, and force-pushed.
+- **2026-11-03 (Progressions):** Oliver wants to practise chord progressions away from the guitar: pick common
+  ones, hear them as chords or arpeggios, build their own (four chords max, triads or 7ths). Built M9 as a separate
+  tab rather than extending Backing track (that one is a band for improvising; this one is for hearing the
+  harmony). Theory test-first (9 new tests, incl. a letter speller so bVI in C reads Ab, not G#). Headless Edge
+  run over CDP clicked through every control at 390 px; no errors.
+- **2026-11-06 (Note names):** After a lesson, Oliver asked for a tool to learn note names, based on research. Sources
+  agree on: natural notes first on the low strings, frets 0-11 only, short daily sessions, find-a-note and across-a-fret
+  drills, naming notes aloud round the cycle of 4ths, then using the notes in real playing. One source warns isolated fret
+  names don't help soloing, and one warns against all keys at once; hence the shape walk with degrees, and stages.
+  Existing "Find the note" needs a guitar and mic, so this tab doesn't. Built M10, theory test-first (13 new tests).

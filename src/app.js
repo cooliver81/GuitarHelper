@@ -4,6 +4,8 @@
 
 import * as path from "./sections/path.js";
 import * as diagrams from "./sections/diagrams/index.js";
+import * as noteNames from "./sections/noteNames.js";
+import * as chordLab from "./sections/chordLab.js";
 import * as changes from "./sections/changes.js";
 import * as playalong from "./sections/playalong.js";
 import * as tuner from "./sections/tuner.js";
@@ -14,6 +16,8 @@ import * as setup from "./sections/setup.js";
 
 const GROUPS = [
   { label: "Scales & shapes", short: "Shapes", tabs: [{ id: "diagrams", label: "Diagrams", mod: diagrams }] },
+  { label: "Note names", short: "Notes", tabs: [{ id: "note-names", label: "Note names", mod: noteNames }] },
+  { label: "Progressions", short: "Chords", tabs: [{ id: "progressions", label: "Progressions", mod: chordLab }] },
   { label: "Play along", short: "Play", tabs: [
     { id: "changes", label: "Backing track", mod: changes },
     { id: "playalong", label: "Over a recording", mod: playalong },

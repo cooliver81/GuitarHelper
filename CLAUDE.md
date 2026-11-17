@@ -1,7 +1,7 @@
 # GuitarHelper
 
 Browser guitar practice app. Main focus: scale and shape diagrams with quizzes and progress
-(`src/sections/diagrams/`). Also: backing tracks and play-along over recordings (with
+(`src/sections/diagrams/`). Also: note-name drills (`src/sections/noteNames.js`), progressions ear practice (`src/sections/chordLab.js`), backing tracks and play-along over recordings (with
 auto-sync), mic drills, tuner, metronome. Public repo, deployed as static files (GitHub
 Pages). Scope, milestones and status: `docs/PLAN.md`.
 
