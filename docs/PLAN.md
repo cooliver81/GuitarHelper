@@ -194,21 +194,88 @@ Oliver's teacher named the gap: knows shapes and the major scale by ear, but not
 - Pure logic in `src/theory/noteNames.js`, tested in `tests/noteNames.test.js`
 - The 3 s threshold and the intervals are my choice, not from a source. Change them if they feel wrong.
 
-### Later
-From the 2026-10-23 skills review (general guitar skills the app doesn't cover yet):
-- **Ear training:** interval and chord-quality quiz (hear it, name it, then find it on the board);
-  "sing then play" prompts. Transcription is covered by Play-along (loop + slow-down).
-- **Melodies:** learn the head of each tune by ear before improvising on it; a per-song
-  "melody learned" checkbox and a loop preset for the head.
-- **Practice planner:** short interleaved sessions (e.g. 3 × 10 min rotating Diagrams /
-  Changes / Play-along) instead of one long block; a practice log across tabs.
-- **Rhythm:** rhythm-only exercises (comp patterns, accents on off-beats); displaced
-  metronome (click on the "and").
-- Technique (bends, vibrato, legato, picking) stays out of scope: an app can't judge it well.
-- Record WAV clips per string (open, 5th, 12th fret) as a fixture set; check the detector against real guitar
-- `AudioWorklet` migration with those tests as the safety net
-- Playwright smoke test + GitHub Actions running `npm test`
-- Practice log (minutes per tool, streaks) in `localStorage`
+## Roadmap (from the 2026-11-17 review)
+
+The app has many tabs and little real use yet. The review's conclusion: **use what's built, then
+connect the tabs, before adding more.** Order below; each step has a start condition. Sources
+are at the end of this section; most are teaching blogs and app listings, and only one is a study.
+
+### Step 0: use it (2 weeks, no building)
+- Push M9 and M10 (needs Oliver's go-ahead), then use the app on real practice days.
+- Keep a friction list in the Session log: what annoyed, what was skipped, what was missing.
+- Show the app to Oliver's guitar teacher once; note what they'd change.
+- Check Note names' pacing: is 3 s right? Do the 1/3/7/21-day intervals bring notes back at a useful rate?
+- **Done when:** two weeks of use and a written friction list. Fix the top items before M11.
+
+### M11: Today (practice planner + log)
+Why: tabs are separate silos; nothing says what to practise today or records what was done.
+A small study found 3-minute switching between tasks rated as well as or better than one long
+block (Carter & Grahn 2016, n = 10, raters didn't always agree).
+- A "Today" tab, first in the nav: a session of 3 blocks × ~10 min (length adjustable), each block
+  one existing drill (Note names stage, Diagrams quiz on the weakest shape, a Progressions ear quiz,
+  a Backing-track exercise). Timer per block; "next block" moves on.
+- Blocks chosen from weak spots the tabs already store (Note names cards due, Diagrams progress
+  grid, Changes history), rotating so the same tab doesn't lead twice in a row.
+- Practice log in `localStorage`: date, minutes per tool, one-line note. A week view and a streak.
+- Pure logic (block picker, log summaries) in `src/theory/planner.js`, test-first.
+- Open question for Oliver: should blocks open the real tab, or run inside Today?
+- **Start when:** Step 0 is done.
+
+### M12: Degree ear trainer
+Why: Oliver knows the major scale by ear and is learning the names; nothing joins sound → degree
+→ place on the neck. Functional ear trainers play a drone and a note, and you name the degree;
+the common advice is to start with 1, 3, 5 and add degrees as they become easy.
+- Drone (tonic, synth) + one note; answer by degree (1–7, then chromatic). Then "find it": click
+  the note on the neck in a chosen CAGED shape.
+- Levels: 1-3-5 → full major → chromatic; short melodic cells (2–3 notes) at the top level.
+- Can reuse Note names' Leitner schedule per degree; feeds M11 as a block.
+- **Start when:** M11 is in use, unless Step 0's friction list says otherwise.
+
+### M13: Gap click (rhythm)
+Why: timing matters more than one more scale tool for comping, and it's cheap. Teaching sources
+suggest muting the click for a bar or two and checking you come back in on time.
+- Metronome and Backing track: "click plays N bars, silent M bars", optionally rising M. Click
+  on 2 & 4 and displaced click (on the "and") as options.
+- Pure scheduling logic tested; sound checked by hand.
+- **Size:** small; can be done any time after Step 0.
+
+### M14: Call and response (mic)
+Why: the best use of the existing single-note detector. Apps like this play a short phrase, then
+score you playing it back.
+- Hear a 2–4 note phrase over a drone (in a key and position), play it back; score note by note,
+  octave-independent at first.
+- Starts from M12's levels; reuses the mic drills' detector and board.
+- **Start when:** M12 is done and the detector has been checked on real guitar (M15).
+
+### M15: Engineering safety net
+- Record WAV clips per string (open, 5th, 12th fret) as fixtures; report the detector's cents error
+  per note as a table (as `CLAUDE.md` requires).
+- GitHub Actions running `npm test` on every push; a Playwright smoke test loading each tab at
+  390 and 1280 px with no console errors.
+- Check iOS Safari once (audio unlock, mic, layout).
+- `AudioWorklet` migration with the fixtures as the safety net (if still needed).
+- **Size:** small to medium; can run alongside any step.
+
+### Parked
+- Progressions: more than four chords, slash chords, a scored multiple-choice "which progression?" quiz.
+- Melodies: a per-song "melody learned" checkbox and a loop preset for the head (songs stay in Oliver's browser).
+- More scales or theory tabs.
+- Mental-practice features: a large study found mental practice didn't help jazz improvisation
+  (Miksza et al. 2018, as cited by Steenstrup et al. 2021).
+- Technique (bends, vibrato, legato, picking): an app can't judge it well.
+
+### Roadmap sources
+[Carter & Grahn 2016](https://pmc.ncbi.nlm.nih.gov/articles/PMC4989027) (interleaved practice, clarinet) ·
+[Steenstrup et al. 2021](https://www.frontiersin.org/articles/10.3389/fpsyg.2021.757052/pdf) (practice strategies, trumpet) ·
+[Functional Ear Trainer](https://apps.apple.com/app/id1088761926) ·
+[Stringkick scale-degree trainer](https://www.stringkick.com/scale-degree-ear-trainer/) ·
+[PitchBop](https://apps.apple.com/us/app/pitchbop/id1506524676) ·
+[Gaps](https://jpcerrone.itch.io/gaps) ·
+[EarMaster](https://earmaster.com/products/ear-training-sight-singing/earmaster-software.html) ·
+[Fundamental Changes: rhythm and time](https://www.fundamental-changes.com/?p=3689) ·
+[TrueFire: why guitarists rush](https://blog.truefire.com/guitar-lessons/why-intermediate-guitarists-rush-and-how-to-fix-it/) ·
+[Musical U: practice journal](https://www.musical-u.com/?p=430) ·
+[ArtistWorks: beyond boxes](https://blog.artistworks.com/?p=7998)
 
 ## Learning path (guitar)
 
@@ -263,6 +330,9 @@ errors, no horizontal scroll. Not checked by ear: how the synth chords and arpeg
 2026-11-06: M10 (Note names tab) built locally, also **not committed or pushed**. 87 unit tests pass. Headless Edge
 at 390 px and 1280 px: every mode answered right and wrong, no console errors, no horizontal scroll. Not checked:
 real use over several days, so the spaced-repetition pacing is untested in practice.
+2026-11-17: M9 and M10 reviewed and committed (ed9c010), **not pushed**: waiting for Oliver's go-ahead. 87 unit tests
+pass; the shape walk was also checked for all 11 scales × 12 keys × 5 shapes (660 walks, all correct). Still not
+checked by ear. Next: Step 0 of the Roadmap (push, then two weeks of use and a friction list), then M11.
 
 ## Session log
 
@@ -336,3 +406,8 @@ real use over several days, so the spaced-repetition pacing is untested in pract
   drills, naming notes aloud round the cycle of 4ths, then using the notes in real playing. One source warns isolated fret
   names don't help soloing, and one warns against all keys at once; hence the shape walk with degrees, and stages.
   Existing "Find the note" needs a guitar and mic, so this tab doesn't. Built M10, theory test-first (13 new tests).
+- **2026-11-17 (review and roadmap):** Pre-push review of M9 and M10: no bugs found; known small quirk left as is
+  (7ths → triads → 7ths turns a dim7 into m7b5). Committed both tabs. Oliver then asked for an online review of next
+  steps; the conclusion is to use the app before building more, then connect the tabs (planner and log), then ear
+  training by degree, gap click, call and response, and a CI/detector safety net. Written up as the Roadmap above,
+  which replaces the old "Later" list.
